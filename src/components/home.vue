@@ -24,7 +24,8 @@ const features = ref([
   { id: 0, title: '每日签到', path: 'sign', icon: '📅' },
   { id: 1, title: '获取绑定码', path: 'bindCode', icon: '🔐' },
   { id: 2, title: '赞助网页', path: 'sponsor', icon: '💖' },
-  { id: 3, title: '找回密码', path: 'recover', icon: '🔑' }
+  { id: 3, title: '找回密码', path: 'recover', icon: '🔑' },
+  { id: 4, title: '联系客服', path: 'support', icon: '🆘' }
 ])
 
 // 导航到指定路径

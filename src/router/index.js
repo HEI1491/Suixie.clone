@@ -7,6 +7,7 @@ const recover = () => import('../components/recover.vue')
 const sign = () => import('../components/sign.vue')
 const bindCode = () => import('../components/bindCode.vue')
 const sponsor = () => import('../components/Sponsor.vue')
+const support = () => import('../components/CustomerService.vue')
 const notFound = () => import('../components/NotFound.vue')
 
 const routes = [
@@ -17,6 +18,7 @@ const routes = [
     { path: '/sign', component: sign },
     { path: '/bindCode', component: bindCode },
     { path: '/sponsor', component: sponsor },
+    { path: '/support', component: support },
     // 404路由，捕获所有未匹配的路径
     { path: '/:pathMatch(.*)*', component: notFound }
 ]
