@@ -377,6 +377,7 @@ onMounted(() => {
           <button class="header-btn logout-btn" @click="logout">退出</button>
         </template>
       </div>
+      <div v-if="!isLoggedIn" class="login-hint-art">因反向代理不稳定，登录失败请重试</div>
     </header>
     
     <!-- 主要内容区域 -->
@@ -661,6 +662,61 @@ onMounted(() => {
   backdrop-filter: blur(10px);
   box-shadow: var(--shadow-md);
   transition: all var(--transition-normal);
+}
+
+.login-hint-art {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: -28px;
+  padding: 6px 12px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  font-size: 0.95rem;
+  line-height: 1.2;
+  text-align: center;
+  background: linear-gradient(90deg, #f56565, #ed8936, #f6ad55);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 2px 8px rgba(246, 173, 85, 0.45);
+  white-space: nowrap;
+  pointer-events: none;
+  animation: hintFade 0.6s ease;
+  z-index: 1002;
+}
+
+@media (max-width: 768px) {
+  .login-hint-art {
+    bottom: -24px;
+    font-size: 0.85rem;
+    padding: 4px 10px;
+    white-space: normal;
+    width: 90%;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-hint-art {
+    bottom: -22px;
+    font-size: 0.8rem;
+    width: calc(100% - 32px);
+    padding: 4px 8px;
+    letter-spacing: 0.2px;
+  }
+}
+
+.home-container.dark-mode .login-hint-art {
+  background: linear-gradient(90deg, #63b3ed, #9f7aea, #f6ad55);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 2px 8px rgba(99, 179, 237, 0.35);
+}
+
+@keyframes hintFade {
+  0% { opacity: 0; transform: translateX(-50%) translateY(6px); }
+  100% { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
 .auth-buttons {

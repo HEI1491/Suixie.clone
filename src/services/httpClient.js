@@ -80,7 +80,7 @@ async function parseJson(response) {
  * @param {string} options.apiKey - API访问密钥
  * @returns {Object} HTTP客户端对象
  */
-export function createHttpClient({ baseUrl, apiKey }) {
+export function createHttpClient({ baseUrl, apiKey, timeoutMs = 8000 }) {
   // 标准化基础URL
   const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
 
@@ -126,12 +126,16 @@ export function createHttpClient({ baseUrl, apiKey }) {
       for (const b of bases) {
         const url = buildUrl(b, path, searchParams);
         try {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), timeoutMs);
           const response = await fetch(url, {
             method,
             headers,
             body: payloadBody,
             credentials: 'include',
+            signal: controller.signal,
           });
+          clearTimeout(timer);
           const payload = await parseJson(response);
           const successStatuses = new Set(['success', 'successed']);
           if (!response.ok || !successStatuses.has(payload.status)) {
@@ -143,6 +147,9 @@ export function createHttpClient({ baseUrl, apiKey }) {
           return payload;
         } catch (error) {
           if (error instanceof ApiError) throw error;
+          if (error?.name === 'AbortError') {
+            throw new ApiError('Request timeout', { status: 0 });
+          }
         }
       }
       throw new ApiError('Invalid server response');

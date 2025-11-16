@@ -250,6 +250,10 @@ const isLoggingIn = ref(false);
 const animationClass = ref('');
 const countdown = ref(0);
 let timer = null;
+const sumLevel = ref('');
+const sumExp = ref(null);
+const sumGain = ref(null);
+const sumExpBefore = ref(null);
 
 const togglePasswordVisibility = () => {
   showPassword.value = !showPassword.value;
@@ -356,6 +360,22 @@ const handleLogin = async () => {
       if (result.status === 200) {
         try { localStorage.setItem(API_DEFAULTS.displayNameStorageKey, loginForm.username); } catch {}
         try { localStorage.setItem(API_DEFAULTS.loginTimestampStorageKey, String(Date.now())); } catch {}
+        try {
+          const prof1 = await api.getUserProfile();
+          sumExpBefore.value = prof1?.data?.currentExp ?? null;
+        } catch {}
+        try {
+          await api.sign();
+        } catch {}
+        try {
+          const prof2 = await api.getUserProfile();
+          sumLevel.value = prof2?.data?.level ?? '';
+          sumExp.value = prof2?.data?.currentExp ?? null;
+          if (sumExpBefore.value != null && sumExp.value != null) {
+            const diff = Number(sumExp.value) - Number(sumExpBefore.value);
+            sumGain.value = Math.max(0, isNaN(diff) ? 0 : diff);
+          }
+        } catch {}
         showMessage('三天不登录自动退出登录账号', { type: 'info', duration: 3000 })
         animationClass.value = 'slide-out';
         setTimeout(() => {
@@ -469,6 +489,12 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped src="../assets/NewLogin.css"></style>
+<style scoped>
+.summary { margin-top: 10px; padding: 12px; background: var(--card-bg); border-radius: 12px; box-shadow: var(--shadow-md); }
+.sum-line { display: flex; justify-content: space-between; padding: 8px 10px; background: var(--btn-secondary-bg); border-radius: 10px; margin-bottom: 8px; }
+.sum-label { color: var(--text-muted); }
+.sum-value { color: var(--text-primary); font-weight: 600; }
+</style>
 try {
   const preMsg = localStorage.getItem(API_DEFAULTS.preLoginMessageKey);
   if (preMsg) {

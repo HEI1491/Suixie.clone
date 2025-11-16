@@ -157,6 +157,14 @@ export class ApiClient {
   getFengshenList(...args) {
     return this.services.getFengshenList(...args);
   }
+
+  getProfileByQQ(...args) {
+    return this.services.getProfileByQQ(...args);
+  }
+
+  getUserProfile(...args) {
+    return this.services.getUserProfile(...args);
+  }
 }
 
 /**
