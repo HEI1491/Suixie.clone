@@ -203,7 +203,7 @@
 
           <div class="button-group">
             <button class="btn btn-prev" @click="prevStep">上一步</button>
-            <button class="btn btn-next" @click="nextStep">
+            <button class="btn btn-next" @click="nextStep" :disabled="(loginMethod !== 'account') && !loginForm.verificationCode">
               下一步
             </button>
           </div>
