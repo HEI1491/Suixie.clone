@@ -9,13 +9,19 @@ const TYPE_COLORS = {
 
 export function useSnackbar(defaultOptions = {}) {
   const timers = new Set();
+  const elements = new Set();
 
-  const hideSnackbar = (element) => {
+  const hideSnackbar = (element, immediate = false) => {
+    if (immediate) {
+      element.remove();
+      return;
+    }
     element.style.top = '-60px';
     element.style.opacity = '0';
     const removeTimer = window.setTimeout(() => {
       element.remove();
       timers.delete(removeTimer);
+      elements.delete(element);
     }, 300);
     timers.add(removeTimer);
   };
@@ -49,6 +55,7 @@ export function useSnackbar(defaultOptions = {}) {
     `;
 
     document.body.appendChild(element);
+    elements.add(element);
 
     requestAnimationFrame(() => {
       element.style.top = '20px';
@@ -60,6 +67,8 @@ export function useSnackbar(defaultOptions = {}) {
   };
 
   onBeforeUnmount(() => {
+    elements.forEach((el) => hideSnackbar(el, true));
+    elements.clear();
     timers.forEach((timer) => {
       window.clearTimeout(timer);
     });

@@ -1,6 +1,5 @@
 <template>
-  <div class="cuddle-wrap">
-    <!-- 顶部右侧主题切换按钮（参考主页样式） -->
+  <div class="support-shell">
     <button
       class="theme-toggle fixed"
       @click="cycleThemePreference"
@@ -8,61 +7,105 @@
     >
       {{ themeIcon }}
     </button>
-    <section class="hero-card">
-      <div class="scribble scribble-one" aria-hidden="true"></div>
-      <div class="scribble scribble-two" aria-hidden="true"></div>
-      <header class="hero-copy">
-        <p class="eyebrow">SUÌXIE · 游戏服务器</p>
-        <h1>有事就喊我，<br />客服还是我本人。</h1>
-        <p>
-          我一直盯着服务器状态面板，也守在 2124007978 这个 QQ 号后面。无论是掉线、补丁还是账号问题，直接告诉我就好。
-        </p>
-        <div class="hero-tags">
-          <span v-for="badge in badges" :key="badge">{{ badge }}</span>
+
+    <!-- 新增页面头部动画 -->
+    <div class="page-header">
+      <div class="header-bg-animation"></div>
+      <div class="header-content">
+        <h1 class="page-title">客户支持中心</h1>
+        <p class="page-subtitle">我们随时为您提供帮助</p>
+      </div>
+    </div>
+
+    <section class="support-hero">
+      <div class="hero-main">
+        <div class="hero-header">
+          <p class="eyebrow">SUÌXIE · 自托管客服</p>
+          <h1 class="hero-title">有事就喊我，客服和运维都是我</h1>
+          <p class="hero-description">
+          我盯着服务器状态面板，也守着 {{ manualServiceQQ }} 这个 QQ 号。掉线、补丁、账号、节点调整——你只要告诉我，剩下的我和机器人一起接手。
+          </p>
         </div>
-        <div class="hero-buttons">
-          <button class="btn primary" @click="openManualService">找我聊聊</button>
-          <button class="btn ghost" @click="goHome">返回主页</button>
+        <div class="hero-features">
+          <ul class="badge-list">
+            <li v-for="badge in badges" :key="badge" class="badge-item">
+              <span class="badge-icon">✓</span>
+              {{ badge }}
+            </li>
+          </ul>
         </div>
-      </header>
-      <div class="hero-side">
-        <img
-          class="avatar"
-          src="https://img.100sucai.com/2024/05/18/14/23/100601.jpg"
-          alt="站长插画"
-        />
-        <ul class="mini-stats">
-          <li>
-            <strong>1,287</strong>
-            <span>次暖心回复</span>
-          </li>
-          <li>
-            <strong>2年</strong>
-            <span>个人站点</span>
-          </li>
-        </ul>
-        <div class="qq-card">
-          <p>客服 QQ</p>
-          <strong>2124007978</strong>
-          <small>游戏服务器专属通道</small>
+        <div class="hero-actions">
+          <button class="btn primary btn-contact" @click="openManualService">
+            <span class="btn-icon">💬</span>
+            立即联系 QQ
+          </button>
+          <button class="btn outline btn-bot" @click="focusBotComposer">
+            <span class="btn-icon">🤖</span>
+            和机器人试跑
+          </button>
+          <button class="text-link btn-home" @click="goHome">
+            <span class="btn-icon">←</span>
+            返回主页
+          </button>
         </div>
+      </div>
+      <div class="hero-aside">
+        <div class="contact-card qq-card">
+          <div class="card-header">
+            <div class="card-icon">👨‍💻</div>
+            <div class="card-title-area">
+              <p class="label">客服K桑QQ</p>
+              <strong class="qq-number">{{ manualServiceQQ }}</strong>
+            </div>
+          </div>
+          <div class="card-content">
+            <small class="service-info">全节点维护 · 单线程服务</small>
+            <div class="availability-indicator">
+              <span class="status-dot online"></span>
+              <span class="status-text">在线服务</span>
+            </div>
+          </div>
+
+        </div>
+        <div class="status-dashboard">
+          <h3 class="dashboard-title">服务状态</h3>
+          <div class="status-grid">
+          <article v-for="signal in statusSignals" :key="signal.label" class="status-card">
+            <div class="status-value">{{ signal.value }}</div>
+            <div class="status-label">{{ signal.label }}</div>
+            <div class="status-meta">{{ signal.meta }}</div>
+          </article>
+        </div>
+      </div>
       </div>
     </section>
 
-    <section class="bot-lounge">
-      <div class="bot-info">
-        <h2>KSNAG · 吹水机器人客服</h2>
+    <section class="bot-hub" ref="botSectionRef">
+      <aside class="bot-brief">
+        <p class="eyebrow">KSNAG · 吹水机器人</p>
+        <h2>先让 LLM 跑一遍，再由我亲自跟进</h2>
         <p>
-          KSNAG 基于 LLM 的提示词定制，能陪你吹水，也能在后台整理常见问题、生成工单草稿，并同步给我审核。
+          KSNAG 接入 botapi 配置，和主站同一套凭据。它会整理日志、提炼关键词、生成工单草稿，然后同步到我这里审核。
         </p>
-        <ul>
-          <li>关键词总结 + 待办</li>
+        <ul class="bot-points">
+          <li>关键词总结 + 待办列表</li>
           <li>自动生成工单草稿</li>
           <li>支持 Markdown / 代码块</li>
         </ul>
-        <span class="sync-tip">同步到：{{ syncedDestinations }}</span>
-      </div>
-      <div class="bot-panel">
+        <div class="quick-phrases">
+          <button
+            v-for="phrase in quickPhrases"
+            :key="phrase"
+            class="chip"
+            @click="applyPhrase(phrase)"
+          >
+            {{ phrase }}
+          </button>
+        </div>
+        <p class="sync-tip">同步到：{{ syncedDestinations }}</p>
+        <p class="bot-meta">模型：{{ botMeta }}</p>
+      </aside>
+      <div class="bot-console">
         <div class="bot-history">
           <div
             v-for="bubble in chatHistory"
@@ -80,41 +123,37 @@
         </div>
         <form class="bot-input" @submit.prevent="handleBotSend">
           <input
+            ref="messageInputRef"
             v-model="userMessage"
             type="text"
-            placeholder="描述你的问题，或和 KSNAG 吹吹水，它都会记录。"
+            placeholder="描述你的问题，或者让 KSNAG 帮你吹吹水，它都会记录"
             :disabled="isBotTyping"
           />
           <button class="btn primary" :disabled="!userMessage.trim() || isBotTyping">发送</button>
         </form>
-        <p class="bot-hint">提示：输入 “生成工单” 让 KSNAG 帮你整理提交材料。</p>
+        <p class="bot-hint">
+          提示：输入“生成工单”或“整理日志”，KSNAG 会自动生成工单草稿并告诉我。
+        </p>
       </div>
     </section>
 
-    <section class="faq-shelf">
-      <div class="faq-intro">
-        <h2>常见小问题，我先写在这里</h2>
-        <p>找不到答案就留言，KSNAG 会记下关键字，我上线后第一时间处理。</p>
-      </div>
-      <div class="faq-list">
-        <article v-for="faq in faqs" :key="faq.title" class="faq-card">
-          <h3>{{ faq.title }}</h3>
-          <p>{{ faq.answer }}</p>
-          <button class="text-link" @click="openManualService">继续问我 →</button>
-        </article>
-      </div>
-    </section>
+    
   </div>
 </template>
 
 <script setup>
-import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTheme } from '../composables/useTheme.js'
+import { botApi, chatWithBot } from '../api/botapi.js'
 
 const router = useRouter()
 const { themePreference, resolvedTheme, themeToggleLabel, themeIcon, cycleThemePreference } = useTheme()
 const manualServiceQQ = ref('2124007978')
+const botSectionRef = ref(null)
+const messageInputRef = ref(null)
+const userMessage = ref('')
+const isBotTyping = ref(false)
 
 const openManualService = () => {
   const qqUrl = `https://wpa.qq.com/msgrd?v=3&uin=${manualServiceQQ.value}&site=qq&menu=yes`
@@ -125,59 +164,46 @@ const goHome = () => {
   router.push('/')
 }
 
-const badges = ['实时看板', '夜间值守', '跨时区友好']
+const focusBotComposer = async () => {
+  if (botSectionRef.value) {
+    botSectionRef.value.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+  await nextTick()
+  messageInputRef.value?.focus()
+}
 
-const faqs = [
-  { title: '账号怎么绑定？', answer: '进入「获取绑定码」，复制后在游戏里粘贴，就算完成签收啦。' },
-  { title: '充值未到账？', answer: '截图付款记录发给我，或让 KSNAG 生成工单。我会在 10 分钟内核实。' },
-  { title: '延迟太高怎么办？', answer: '告诉我所在地区和网络，我会提供自测过的备用节点。' }
+const applyPhrase = async (phrase) => {
+  userMessage.value = phrase
+  await focusBotComposer()
+}
+
+const badges = ['实时看板', '夜间值守', '跨时区友好', '自建工单流']
+const quickPhrases = [
+  '帮我生成工单：晚高峰延迟 180ms',
+  '掉线 3 次，想查服务器状态',
+  '账号充值延迟到账，帮我核对订单',
+  '整理一下 CDN 切换步骤发我'
 ]
 
+const statusSignals = [
+  { label: '今日处理', value: '27', meta: '+4 工单' },
+  { label: '在线节点', value: '8', meta: '多地自选' },
+  { label: '平均响应', value: '3′', meta: '人工回复' },
+  { label: '机器人命中', value: '92%', meta: 'FAQ 覆盖' }
+]
+
+ 
+
 const chatHistory = ref([
-  { id: 1, role: 'assistant', content: '嗨，我是 KSNAG，想吹水还是提问题？我会把重点同步给站长。' }
+  {
+    id: 1,
+    role: 'assistant',
+    content: '嗨，我是 KSNAG，想吹水还是提问题？我会把重点同步给站长。'
+  }
 ])
-const userMessage = ref('')
-const isBotTyping = ref(false)
 
-const botConfig = {
-  endpoint: import.meta.env.VITE_SUPPORT_BOT_ENDPOINT || '/api/support-bot',
-  apiKey: import.meta.env.VITE_SUPPORT_BOT_API_KEY || '',
-  model: import.meta.env.VITE_SUPPORT_BOT_MODEL || 'gpt-4o-mini',
-  temperature: Number(import.meta.env.VITE_SUPPORT_BOT_TEMPERATURE ?? 0.3)
-}
-
-const syncedDestinations = computed(() => 'QQ 私信 · 工单草稿 · 服务器看板')
-
-const callSupportBot = async (messages) => {
-  const payload = {
-    model: botConfig.model,
-    messages,
-    temperature: botConfig.temperature,
-    stream: false
-  }
-
-  const headers = { 'Content-Type': 'application/json' }
-  if (botConfig.apiKey) {
-    headers.Authorization = `Bearer ${botConfig.apiKey}`
-  }
-
-  const response = await fetch(botConfig.endpoint, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(payload)
-  })
-
-  if (!response.ok) {
-    throw new Error(`bot offline (${response.status})`)
-  }
-
-  const data = await response.json()
-  return (
-    data.reply ??
-    data.choices?.[0]?.message?.content ??
-    '我已经记下啦，我们继续聊聊。'
-  )
-}
+const syncedDestinations = computed(() => botApi.destinations.join(' · '))
+const botMeta = computed(() => `${botApi.model} · 温度 ${botApi.temperature}`)
 
 const handleBotSend = async () => {
   if (!userMessage.value.trim() || isBotTyping.value) return
@@ -188,8 +214,17 @@ const handleBotSend = async () => {
 
   isBotTyping.value = true
   try {
-    const reply = await callSupportBot(
-      chatHistory.value.map(({ role, content }) => ({ role, content }))
+    const reply = await chatWithBot(
+      chatHistory.value.map(({ role, content }) => ({ role, content })),
+      {
+        extraPayload: {
+          metadata: {
+            page: 'support',
+            theme: themePreference.value || resolvedTheme.value,
+            qq: manualServiceQQ.value
+          }
+        }
+      }
     )
     chatHistory.value.push({
       id: Date.now() + 1,
@@ -197,10 +232,11 @@ const handleBotSend = async () => {
       content: reply
     })
   } catch (error) {
+    console.error(error)
     chatHistory.value.push({
       id: Date.now() + 2,
       role: 'assistant',
-      content: 'KSNAG 有点害羞，暂时没能连上。我已经把你的留言记下，稍后我会亲自回复！'
+      content: 'KSNAG 有点害羞，暂时没能连上。我已经把你的留言记下，稍后我会亲自回复。'
     })
   } finally {
     isBotTyping.value = false
@@ -211,163 +247,103 @@ const handleBotSend = async () => {
 <style scoped>
 :global(:root) {
   color-scheme: light;
-  /* 背景黑白配色（浅色） */
-  --body-bg: linear-gradient(180deg, #f0f4f8 0%, #e8f0f7 50%, #dde8f3 100%);
-  /* 文本与冷色系强调 - 提高对比度 */
+  --body-bg: linear-gradient(180deg, #f4f7fb 0%, #e8f0f7 60%, #dde8f3 100%);
   --text-primary: #1a202c;
   --text-secondary: #4a5568;
   --tag-bg: rgba(168, 213, 255, 0.15);
-  /* 卡片与按钮（白色为主，冰蓝色和银灰色点缀） */
-  --hero-card-bg: linear-gradient(135deg, #ffffff, #f8fafc);
-  --hero-card-shadow: 0 35px 70px rgba(168, 213, 255, 0.25);
-  --button-primary-bg: #a8d5ff;
-  --button-primary-text: #1a202c;
-  --button-ghost-bg: rgba(232, 240, 247, 0.25);
-  --button-ghost-border: rgba(168, 213, 255, 0.35);
-  --button-ghost-text: #1a202c;
-  --button-outline-border: rgba(168, 213, 255, 0.6);
-  --button-outline-text: #1a202c;
-  /* 组件背景与边框（冰蓝色和银灰色系） */
-  --qq-card-bg: rgba(255, 255, 255, 0.85);
-  --qq-card-border: rgba(168, 213, 255, 0.25);
-  --bot-lounge-bg: linear-gradient(145deg, #f8fafc, #f0f4f8);
-  --bot-panel-bg: rgba(255, 255, 255, 0.75);
+  --card-bg: linear-gradient(135deg, #ffffff, #f8fafc);
+  --card-outline: rgba(168, 213, 255, 0.3);
+  --accent: #4a90e2;
+  --accent-soft: rgba(168, 213, 255, 0.2);
+  --bot-panel-bg: rgba(255, 255, 255, 0.85);
   --bot-border: rgba(168, 213, 255, 0.2);
   --bubble-assistant-bg: rgba(200, 230, 255, 0.85);
-  --bubble-user-bg: rgba(168, 213, 255, 0.8);
+  --bubble-user-bg: rgba(74, 144, 226, 0.12);
   --bubble-user-text: #1a202c;
   --faq-card-bg: rgba(255, 255, 255, 0.92);
   --faq-border: rgba(168, 213, 255, 0.15);
-  --sync-tip-bg: rgba(168, 213, 255, 0.15);
 }
 
 :global([data-theme='dark']) {
   color-scheme: dark;
-  /* 背景黑白配色（深色） */
-  --body-bg: linear-gradient(180deg, #0a1929 0%, #0f172a 50%, #1e293b 100%);
-  /* 文本与冷色系强调 - 优化对比度 */
+  --body-bg: linear-gradient(180deg, #0a1929 0%, #0f172a 60%, #1e293b 100%);
   --text-primary: #f8fafc;
   --text-secondary: #cbd5e1;
   --tag-bg: rgba(168, 213, 255, 0.12);
-  /* 卡片与按钮（深色为主，冰蓝色和银灰色点缀） */
-  --hero-card-bg: linear-gradient(135deg, #0f172a, #1e293b);
-  --hero-card-shadow: 0 35px 70px rgba(168, 213, 255, 0.15);
-  --button-primary-bg: #4a90e2;
-  --button-primary-text: #ffffff;
-  --button-ghost-bg: rgba(232, 240, 247, 0.12);
-  --button-ghost-border: rgba(168, 213, 255, 0.25);
-  --button-ghost-text: #f8fafc;
-  --button-outline-border: rgba(168, 213, 255, 0.5);
-  --button-outline-text: #f8fafc;
-  /* 组件背景与边框（冰蓝色和银灰色系） */
-  --qq-card-bg: rgba(30, 41, 59, 0.8);
-  --qq-card-border: rgba(168, 213, 255, 0.35);
-  --bot-lounge-bg: linear-gradient(145deg, #1e293b, #0f172a);
-  --bot-panel-bg: rgba(30, 41, 59, 0.8);
+  --card-bg: linear-gradient(135deg, #0f172a, #1e293b);
+  --card-outline: rgba(168, 213, 255, 0.25);
+  --accent: #a8d5ff;
+  --accent-soft: rgba(168, 213, 255, 0.2);
+  --bot-panel-bg: rgba(30, 41, 59, 0.9);
   --bot-border: rgba(168, 213, 255, 0.25);
   --bubble-assistant-bg: rgba(30, 41, 59, 0.75);
-  --bubble-user-bg: rgba(168, 213, 255, 0.85);
-  --bubble-user-text: #0a1929;
+  --bubble-user-bg: rgba(168, 213, 255, 0.2);
+  --bubble-user-text: #f8fafc;
   --faq-card-bg: rgba(30, 41, 59, 0.88);
   --faq-border: rgba(168, 213, 255, 0.18);
-  --sync-tip-bg: rgba(168, 213, 255, 0.25);
 }
 
 :global(body) {
   background: var(--body-bg);
-  font-family: 'Fredoka', 'Baloo 2', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  background-size: 200% 200%;
-  animation: bodyWave 16s ease-in-out infinite alternate;
+  font-family: 'Poppins', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   color: var(--text-primary);
-  transition: background 0.8s ease, color 0.3s ease;
+  transition: background 0.6s ease;
 }
 
-.cuddle-wrap {
-  max-width: 1080px;
+.support-shell {
+  max-width: 1160px;
   margin: 0 auto;
-  padding: 40px 20px 80px;
+  padding: 48px 20px 80px;
   color: var(--text-primary);
 }
 
-.hero-card {
-  position: relative;
+.support-hero {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 32px;
   padding: 48px;
   border-radius: 32px;
-  background: var(--hero-card-bg);
-  background-size: 320% 320%;
-  animation: auroraShift 12s ease-in-out infinite;
-  box-shadow: var(--hero-card-shadow);
+  background: var(--card-bg);
+  border: 1px solid var(--card-outline);
+  box-shadow: 0 30px 80px rgba(20, 40, 80, 0.12);
+  position: relative;
   overflow: hidden;
 }
 
-.scribble {
-  position: absolute;
-  width: 240px;
-  height: 240px;
-  opacity: 0.28;
-  background-size: cover;
-}
-
-.scribble-one {
-  top: -40px;
-  right: -30px;
-  background-image: url("data:image/svg+xml,%3Csvg width='240' height='240' viewBox='0 0 240 240' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 40 Q120 0 220 50 T220 180 Q140 230 20 180 T20 40Z' fill='none' stroke='%23a8d5ff' stroke-width='12' stroke-linecap='round'/%3E%3C/svg%3E");
-}
-
-.scribble-two {
-  bottom: -70px;
-  left: -50px;
-  background-image: url("data:image/svg+xml,%3Csvg width='240' height='240' viewBox='0 0 240 240' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M15 120 Q70 10 120 120 T225 120' fill='none' stroke='%23c8e6ff' stroke-width='14' stroke-linecap='round' stroke-dasharray='16 14'/%3E%3C/svg%3E");
-}
-
-.hero-copy {
-  position: relative;
-  z-index: 1;
-}
-
-.eyebrow {
-  font-size: 0.9rem;
-  letter-spacing: 0.2em;
-  color: var(--text-secondary);
-  margin-bottom: 12px;
-}
-
-.hero-copy h1 {
-  font-size: clamp(2.3rem, 4vw, 3.2rem);
-  margin-bottom: 12px;
+.hero-main h1 {
+  font-size: clamp(2.2rem, 4vw, 3.1rem);
   line-height: 1.2;
+  margin-bottom: 16px;
   color: var(--text-primary);
 }
 
-.hero-copy p {
-  max-width: 520px;
+.hero-main p {
   color: var(--text-secondary);
   line-height: 1.7;
 }
 
-.hero-tags {
+.badge-list {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin: 18px 0;
+  margin: 20px 0;
+  padding: 0;
+  list-style: none;
 }
 
-.hero-tags span {
+.badge-list li {
   background: var(--tag-bg);
-  padding: 6px 14px;
   border-radius: 999px;
+  padding: 6px 16px;
   font-size: 0.9rem;
-  color: var(--text-primary);
 }
 
-.hero-buttons {
+.hero-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 14px;
-  margin-top: 10px;
+  margin-top: 18px;
+  align-items: center;
 }
 
 .btn {
@@ -377,178 +353,188 @@ const handleBotSend = async () => {
   font-weight: 600;
   font-size: 1rem;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .btn.primary {
-  background: var(--button-primary-bg);
-  color: var(--button-primary-text);
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.35);
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
 }
 
 .btn.ghost {
-  background: var(--button-ghost-bg);
-  color: var(--button-ghost-text);
-  border: 1px dashed var(--button-ghost-border);
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px dashed var(--card-outline);
 }
 
 .btn.outline {
   background: transparent;
-  color: var(--button-outline-text);
-  border: 1px solid var(--button-outline-border);
+  color: var(--text-primary);
+  border: 1px solid var(--card-outline);
 }
 
-.btn:hover {
-  transform: translateY(-2px);
-  opacity: 0.95;
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-.hero-side {
-  position: relative;
-  z-index: 1;
+.text-link {
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
+.text-link:hover {
+  text-decoration: underline wavy;
+}
+
+.hero-aside {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 20px;
-}
-
-.avatar {
-  width: 160px;
-  height: 160px;
-  border-radius: 50%;
-  border: 6px solid rgba(168, 213, 255, 0.55);
-  object-fit: cover;
-  box-shadow: 0 15px 40px rgba(168, 213, 255, 0.3);
-}
-
-.mini-stats {
-  display: flex;
   gap: 18px;
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.mini-stats li {
-  background: rgba(232, 240, 247, 0.15);
-  border-radius: 20px;
-  padding: 12px 18px;
-  text-align: center;
-  color: var(--text-primary);
-}
-
-.mini-stats strong {
-  display: block;
-  font-size: 1.4rem;
-  color: var(--text-primary);
 }
 
 .qq-card {
-  margin-top: 18px;
-  width: 100%;
-  background: var(--qq-card-bg);
-  border-radius: 22px;
-  padding: 16px 20px;
-  box-shadow: inset 0 0 0 2px var(--qq-card-border);
-  text-align: center;
-  color: var(--text-primary);
-}
-
-.qq-card p {
-  margin: 0;
-  font-size: 0.85rem;
-  letter-spacing: 0.2em;
-  color: var(--text-secondary);
+  padding: 24px;
+  border-radius: 24px;
+  background: var(--accent-soft);
+  border: 1px solid var(--card-outline);
 }
 
 .qq-card strong {
+  font-size: 2rem;
   display: block;
-  font-size: 1.8rem;
-  margin: 6px 0;
-  color: var(--text-primary);
+  margin: 8px 0;
 }
 
-.qq-card small {
-  color: var(--text-secondary);
-}
-
-.bot-lounge {
-  margin-top: 48px;
-  padding: 32px;
-  border-radius: 32px;
-  background: var(--bot-lounge-bg);
-  background-size: 240% 240%;
-  animation: auroraShift 14s ease-in-out infinite;
+.status-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 24px;
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.6);
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 14px;
 }
 
-.bot-info ul {
-  list-style: none;
-  padding: 0;
-  margin: 12px 0;
+.status-card {
+  padding: 16px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid var(--card-outline);
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.sync-tip {
-  display: inline-flex;
-  margin-top: 10px;
-  padding: 6px 12px;
+.status-card strong {
+  font-size: 1.6rem;
+}
+
+.label {
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.bot-hub {
+  margin-top: 48px;
+  padding: 40px;
+  border-radius: 32px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-outline);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 28px;
+}
+
+.bot-brief h2 {
+  margin: 10px 0 12px;
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+}
+
+.bot-points {
+  padding-left: 18px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.quick-phrases {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.chip {
+  border: 1px solid var(--card-outline);
   border-radius: 999px;
-  background: var(--sync-tip-bg);
+  padding: 6px 14px;
+  background: transparent;
+  cursor: pointer;
+  color: var(--text-secondary);
   font-size: 0.85rem;
+}
+
+.chip:hover {
+  border-color: var(--accent);
   color: var(--text-primary);
 }
 
-.bot-panel {
+.sync-tip,
+.bot-meta {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.bot-console {
   background: var(--bot-panel-bg);
   border-radius: 28px;
-  padding: 18px;
+  border: 1px solid var(--bot-border);
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  border: 2px dashed var(--bot-border);
-  backdrop-filter: blur(12px);
-  color: var(--text-primary);
+  padding: 18px;
+  min-height: 380px;
 }
 
 .bot-history {
-  max-height: 320px;
-  overflow-y: auto;
+  flex: 1;
+  overflow: auto;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding-right: 4px;
+  gap: 12px;
+  padding-right: 6px;
 }
 
 .bubble {
   border-radius: 18px;
-  padding: 12px 14px;
-  font-size: 0.95rem;
-  background: var(--bubble-assistant-bg);
-  color: var(--text-primary);
-}
-
-.bubble.user {
-  align-self: flex-end;
-  background: var(--bubble-user-bg);
-  color: var(--bubble-user-text);
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid transparent;
 }
 
 .bubble.assistant {
-  align-self: flex-start;
+  background: var(--bubble-assistant-bg);
+  border-color: var(--card-outline);
+}
+
+.bubble.user {
+  background: var(--bubble-user-bg);
+  color: var(--bubble-user-text);
+  margin-left: auto;
+  border-color: rgba(74, 144, 226, 0.25);
 }
 
 .bubble.typing p {
+  opacity: 0.8;
   font-style: italic;
-  color: var(--text-secondary);
 }
 
 .bot-input {
+  margin-top: 16px;
   display: flex;
   gap: 10px;
 }
@@ -556,10 +542,10 @@ const handleBotSend = async () => {
 .bot-input input {
   flex: 1;
   border-radius: 18px;
-  border: 1px solid rgba(128, 128, 128, 0.5);
+  border: 1px solid rgba(128, 128, 128, 0.4);
   padding: 10px 16px;
   font-size: 0.95rem;
-  background: rgba(255, 255, 255, 0.12);
+  background: transparent;
   color: var(--text-primary);
 }
 
@@ -570,109 +556,380 @@ const handleBotSend = async () => {
 .bot-hint {
   font-size: 0.8rem;
   color: var(--text-secondary);
+  margin-top: 8px;
 }
 
-.faq-shelf {
-  margin-top: 50px;
-  padding: 32px;
-  border-radius: 32px;
-  background: var(--faq-card-bg);
-  background-size: 200% 200%;
-  animation: auroraShift 16s ease-in-out infinite;
-  border: 3px solid var(--faq-border);
-  position: relative;
-  color: var(--text-primary);
-}
 
-.faq-shelf::after {
-  content: '';
-  position: absolute;
-  inset: 10px;
-  border-radius: 28px;
-  border: 1px dashed rgba(168, 213, 255, 0.5);
-  pointer-events: none;
-}
-
-.faq-intro h2 {
-  margin: 0 0 8px;
-  color: var(--text-primary);
-}
-
-.faq-list {
-  margin-top: 24px;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 16px;
-}
-
-.faq-card {
-  background: var(--faq-card-bg);
-  border-radius: 20px;
-  padding: 18px;
-  box-shadow: inset 0 0 0 2px var(--faq-border);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  color: var(--text-primary);
-}
-
-.text-link {
-  background: none;
-  border: none;
-  color: var(--text-primary);
-  font-weight: 600;
-  cursor: pointer;
-  padding: 0;
-  text-align: left;
-}
-
-.text-link:hover {
-  text-decoration: underline wavy;
-}
-
-@media (max-width: 640px) {
-  .hero-card {
-    padding: 32px 24px;
-  }
-
-  .mini-stats {
-    flex-direction: column;
-    width: 100%;
-  }
-}
-
-@keyframes auroraShift {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-@keyframes bodyWave {
-  0% {
-    background-position: 0% 0%;
-  }
-  100% {
-    background-position: 60% 60%;
-  }
-}
-
-/* 顶部右侧主题切换按钮样式（与主页风格一致） */
 .theme-toggle.fixed {
   width: 48px;
   height: 48px;
   font-size: 1.4rem;
   background-color: #e9ecef;
   color: #333;
+  position: fixed;
+  top: 18px;
+  right: 24px;
+  border-radius: 50%;
+  border: none;
+  z-index: 20;
+  cursor: pointer;
 }
 
 [data-theme='dark'] .theme-toggle.fixed {
   background-color: #343a40;
   color: #f8f9fa;
+}
+
+@media (max-width: 720px) {
+  .support-hero,
+  .bot-hub {
+    padding: 28px;
+  }
+
+  .theme-toggle.fixed {
+    top: 12px;
+    right: 12px;
+  }
+}
+
+
+
+/* 新增优化样式 */
+
+/* 页面头部动画 */
+.page-header {
+  position: relative;
+  text-align: center;
+  padding: 60px 20px 40px;
+  margin-bottom: 40px;
+  overflow: hidden;
+}
+
+.header-bg-animation {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, var(--accent-soft) 0%, transparent 50%);
+  animation: headerFloat 6s ease-in-out infinite;
+  z-index: -1;
+}
+
+@keyframes headerFloat {
+  0%, 100% { transform: translateY(0px) scale(1); }
+  50% { transform: translateY(-10px) scale(1.02); }
+}
+
+.page-title {
+  font-size: clamp(2.5rem, 5vw, 3.5rem);
+  margin: 0 0 16px;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--text-primary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.page-subtitle {
+  font-size: 1.2rem;
+  color: var(--text-secondary);
+  margin: 0;
+  opacity: 0.9;
+}
+
+/* 英雄区域优化 */
+.hero-header {
+  margin-bottom: 32px;
+}
+
+.hero-title {
+  font-size: clamp(2.2rem, 4vw, 3.1rem);
+  line-height: 1.2;
+  margin-bottom: 16px;
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.hero-description {
+  color: var(--text-secondary);
+  line-height: 1.7;
+  font-size: 1.1rem;
+  margin-bottom: 24px;
+}
+
+.hero-features {
+  margin: 32px 0;
+}
+
+.badge-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--tag-bg);
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+}
+
+.badge-item:hover {
+  transform: translateX(5px);
+  background: var(--accent-soft);
+}
+
+.badge-icon {
+  color: var(--accent);
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+/* 按钮优化 */
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 32px;
+  align-items: center;
+}
+
+.btn {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.btn:hover::before {
+  left: 100%;
+}
+
+.btn-icon {
+  margin-right: 8px;
+  font-size: 1.1rem;
+}
+
+.btn-contact {
+  background: linear-gradient(135deg, var(--accent) 0%, #357abd 100%);
+  box-shadow: 0 15px 35px rgba(74, 144, 226, 0.3);
+}
+
+.btn-contact:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 40px rgba(74, 144, 226, 0.4);
+}
+
+.btn-bot {
+  border: 2px solid var(--card-outline);
+  background: transparent;
+}
+
+.btn-bot:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+.btn-home {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+}
+
+.btn-home:hover {
+  transform: translateX(-5px);
+}
+
+/* 联系卡片优化 */
+.contact-card {
+  padding: 28px;
+  border-radius: 24px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-outline);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.contact-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-soft));
+}
+
+.contact-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.card-icon {
+  font-size: 2.5rem;
+  background: var(--accent-soft);
+  padding: 12px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-title-area {
+  flex: 1;
+}
+
+.qq-number {
+  font-size: 2.2rem;
+  color: var(--accent);
+  margin: 8px 0;
+  font-weight: 700;
+}
+
+.service-info {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  display: block;
+  margin-bottom: 12px;
+}
+
+.availability-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.status-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #10b981;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.status-text {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* 状态仪表板优化 */
+.status-dashboard {
+  margin-top: 24px;
+}
+
+.dashboard-title {
+  font-size: 1.3rem;
+  margin-bottom: 20px;
+  color: var(--text-primary);
+  text-align: center;
+}
+
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 16px;
+}
+
+.status-card {
+  padding: 20px;
+  border-radius: 20px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-outline);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: center;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.status-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.status-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+
+.status-label {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.status-meta {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  opacity: 0.8;
+}
+
+/* 响应式优化 */
+@media (max-width: 768px) {
+  .page-header {
+    padding: 40px 20px 30px;
+  }
+  
+  .hero-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .btn {
+    justify-content: center;
+  }
+  
+  .card-header {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .status-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .status-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .contact-card {
+    padding: 20px;
+  }
+  
+  .qq-number {
+    font-size: 1.8rem;
+  }
 }
 </style>

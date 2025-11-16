@@ -2,14 +2,16 @@
 import { ref, reactive, computed, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import { useTheme } from '../composables/useTheme.js';
-import { useApi } from '../plugins/api.js';
+import { useApi } from '@/plugins/api.js';
 import { useSnackbar } from '../composables/useSnackbar.js';
 
+// 主题、路由、接口、消息等全局依赖
 const { themeToggleLabel, themeIcon, cycleThemePreference } = useTheme();
 const router = useRouter();
 const api = useApi();
 const { showMessage } = useSnackbar();
 
+// 注册进度、表单字段与界面控制状态
 const currentStep = ref(0);
 const formData = reactive({
   account: '',
@@ -19,6 +21,7 @@ const formData = reactive({
   verificationCode: '',
   qqVerificationCode: ''
 });
+// 动画、倒计时以及加载/显示控制
 const animationClass = ref('');
 const countdown = ref(0);
 const qqCountdown = ref(0);
@@ -27,19 +30,23 @@ let qqTimer = null;
 const showPassword = ref(false);
 const isLoading = ref(false);
 
+// 是否满足基础字段已填（控制下一步按钮）
 const isFormValid = computed(() => {
   return formData.account && formData.password && formData.mail;
 });
 
+// 是否需要进入 QQ 验证流程
 const showQqVerification = computed(() => {
   return formData.qq && formData.qq.trim() !== '';
 });
 
+// 基础邮箱格式校验
 const validateEmail = (email) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
 };
 
+// 发送邮箱验证码并启动 60s 倒计时
 const sendVerificationCode = async () => {
   if (countdown.value > 0) return;
   if (!validateEmail(formData.mail)) {
@@ -68,6 +75,7 @@ const sendVerificationCode = async () => {
   }
 };
 
+// 发送 QQ 邮箱验证码（QQ -> qq.com 邮箱）
 const sendQqVerificationCode = async () => {
   if (qqCountdown.value > 0) return;
   if (!formData.qq) {
@@ -97,6 +105,7 @@ const sendQqVerificationCode = async () => {
   }
 };
 
+// 控制下一步转场及阶段性逻辑
 const nextStep = () => {
   if (currentStep.value === 2) {
     if (!validateEmail(formData.mail)) {
@@ -132,6 +141,7 @@ const nextStep = () => {
   }
 };
 
+// 处理返回上一步及特殊跳转
 const prevStep = () => {
   if (currentStep.value === 0) {
     router.push('/');
@@ -167,6 +177,7 @@ const prevStep = () => {
   }
 };
 
+// 汇总数据后调用注册接口
 const handleSubmit = async () => {
   isLoading.value = true;
   try {
@@ -186,22 +197,27 @@ const handleSubmit = async () => {
   }
 };
 
+// 保持邮箱验证码输入为纯数字
 const onVerificationCodeInput = (e) => {
   formData.verificationCode = e.target.value.replace(/\D/g, '');
 };
 
+// 保持 QQ 验证码输入为纯数字
 const onQqVerificationCodeInput = (e) => {
   formData.qqVerificationCode = e.target.value.replace(/\D/g, '');
 };
 
+// 切换密码显示状态
 const togglePasswordVisibility = () => {
   showPassword.value = !showPassword.value;
 };
 
+// 提示用户 QQ 功能暂不可用
 const showQqDisabledMessage = () => {
   showMessage('存在未知问题，该功能已禁用，请直接下一步');
 };
 
+// 离开组件时清除定时器，避免内存泄漏
 onBeforeUnmount(() => {
   if (timer) clearInterval(timer);
   if (qqTimer) clearInterval(qqTimer);

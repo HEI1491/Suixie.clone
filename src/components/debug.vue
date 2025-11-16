@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useApi } from '../plugins/api.js'
+import { useApi } from '@/plugins/api.js'
 import { useSnackbar } from '../composables/useSnackbar.js'
 
 const isExpanded = ref(false)

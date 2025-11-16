@@ -1,94 +1,162 @@
-<script>
+<script setup lang="ts">
+import { ref, onMounted, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
 import { useTheme } from '../composables/useTheme.js'
+import { createApiClient } from '@/services/apiClient.js'
+import { API_DEFAULTS } from '@/core/constants.js'
+
+const router = useRouter()
 const { themeToggleLabel, themeIcon, cycleThemePreference } = useTheme()
 
-export default {
-  name: 'Sign',
-  data() {
-    return {
-      lastSignDate: null,
-      message: '',
-      showMessage: false,
-      animationClass: '',
-      // 添加动画控制相关的响应式数据
-      isAnimating: false,
-      // 定义动画持续时间
-      animationDuration: 400,
-      // 添加签到状态
-      signStatus: null // null: 未签到, 'success': 成功, 'error': 失败
-    }
-  },
-  mounted() {
-    // 从本地存储获取上次签到日期
-    const storedDate = localStorage.getItem('lastSignDate');
-    if (storedDate) {
-      this.lastSignDate = new Date(storedDate);
-    }
-    // 实现页面首次进入时的动画效果
-    this.$nextTick(() => {
+const lastSignDate = ref<Date | null>(null)
+const message = ref('')
+const showMessage = ref(false)
+const animationClass = ref('')
+const isAnimating = ref(false)
+const animationDuration = ref(400)
+const signStatus = ref<null | 'success' | 'error'>(null)
+const qq = ref('')
+const isLoggedIn = ref(!!localStorage.getItem(API_DEFAULTS.tokenStorageKey))
+const useQQFlow = ref(!isLoggedIn.value)
+const profile = ref<any>(null)
+const expPercent = ref(0)
+const signGain = ref<number | null>(null)
+const totalExp = ref<number | null>(null)
+const beforeExp = ref<number | null>(null)
+const autoRedirect = ref(true)
+const qqError = ref('')
+
+onMounted(() => {
+  const storedDate = localStorage.getItem('lastSignDate')
+  if (storedDate) lastSignDate.value = new Date(storedDate)
+
+  nextTick(() => {
+    setTimeout(() => {
+      isAnimating.value = true
+      animationClass.value = 'slide-in'
       setTimeout(() => {
-        this.isAnimating = true
-        this.animationClass = 'slide-in'
-        setTimeout(() => {
-          this.isAnimating = false
-          this.animationClass = ''
-        }, this.animationDuration)
-      }, 0)
-    })
-  },
-  methods: {
-    handleSign() {
-      // 修改: 添加alert提示
-      alert("骗你的，还没做好，三秒之后送你回去");
-      // 添加: 3秒后跳转到首页
-      setTimeout(() => {
-        this.$router.push('/');
-      }, 3000);
-      
-      /*
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      // 检查是否已经签到过
-      if (this.lastSignDate) {
-        this.lastSignDate.setHours(0, 0, 0, 0);
-        // 如果是同一天，则不允许重复签到
-        if (this.lastSignDate.getTime() === today.getTime()) {
-          this.showMessageWithDelay('禁止重复签到', 'error');
-          return;
+        isAnimating.value = false
+        animationClass.value = ''
+      }, animationDuration.value)
+    }, 0)
+  })
+})
+
+async function handleSign() {
+  try {
+    const api = createApiClient()
+    await prefetchProfile()
+    qqError.value = ''
+    if (isLoggedIn.value && !useQQFlow.value) {
+      try {
+        await api.signUser()
+        await tryLoadProfile()
+        if (signGain.value == null && beforeExp.value != null && profile.value?.currentExp != null) {
+          signGain.value = Math.max(0, profile.value.currentExp - (beforeExp.value as number))
+        }
+        showMessageWithDelay('签到成功', 'success')
+        return
+      } catch (e: any) {
+        const reason = e?.reason || e?.message || ''
+        const status = (e && typeof e.status === 'number') ? e.status : 0
+        if (status === 401 || /please\s+login/i.test(String(reason)) || /timeout/i.test(String(reason)) || /Invalid server response/i.test(String(reason))) {
+          useQQFlow.value = true
+          showMessage.value = false
+          signStatus.value = null
+          qqError.value = '无法通过登录签到，转为QQ签到'
+        } else {
+          useQQFlow.value = true
+          showMessage.value = false
+          signStatus.value = null
+          qqError.value = '无法通过登录签到，转为QQ签到'
+          return
         }
       }
-      
-      // 更新签到日期并保存到本地存储
-      this.lastSignDate = today;
-      localStorage.setItem('lastSignDate', today.toString());
-      
-      // 显示成功消息
-      this.showMessageWithDelay('签到成功！', 'success');
-      */
-    },
-    
-    showMessageWithDelay(message, status) {
-      this.message = message;
-      this.signStatus = status;
-      this.showMessage = true;
-      
-      // 3秒后开始播放动画
-      setTimeout(() => {
-        // 恢复按钮原始状态
-        this.signStatus = null;
-        this.showMessage = false;
-        // 添加离开动画，等待动画完成后才切换路由
-        this.isAnimating = true
-        this.animationClass = 'slide-out'
-        setTimeout(() => {
-          this.$router.push('/');
-        }, this.animationDuration);
-      }, 3000);
     }
-    
+    if (!qq.value) {
+      qqError.value = '请输入QQ号'
+      showMessage.value = false
+      signStatus.value = null
+      return
+    }
+    await api.signWithQQ(qq.value)
+    await tryLoadProfile()
+    if (signGain.value == null && beforeExp.value != null && profile.value?.currentExp != null) {
+      signGain.value = Math.max(0, profile.value.currentExp - (beforeExp.value as number))
+    }
+    showMessageWithDelay('签到成功', 'success')
+  } catch (err: any) {
+    const reason = err?.reason || err?.message || '签到失败'
+    if (/not found/i.test(String(reason)) || /please\s+login/i.test(String(reason))) {
+      useQQFlow.value = true
+      signStatus.value = null
+      showMessage.value = false
+      qqError.value = '无法通过登录签到，转为QQ签到'
+    } else {
+      useQQFlow.value = true
+      showMessage.value = false
+      signStatus.value = null
+      qqError.value = '无法通过登录签到，转为QQ签到'
+    }
   }
 }
+
+function showMessageWithDelay(msg: string, status: 'success' | 'error', redirect = true) {
+  message.value = msg
+  signStatus.value = status
+  showMessage.value = true
+
+  autoRedirect.value = !!redirect
+  if (autoRedirect.value) {
+    setTimeout(() => {
+      signStatus.value = null
+      showMessage.value = false
+      isAnimating.value = true
+      animationClass.value = 'slide-out'
+      setTimeout(() => {
+        router.push('/')
+      }, animationDuration.value)
+    }, 3000)
+  }
+}
+
+async function tryLoadProfile() {
+  try {
+    const api = createApiClient()
+    let q = ''
+    if (useQQFlow.value && qq.value) q = qq.value.trim()
+    else {
+      const name = localStorage.getItem(API_DEFAULTS.displayNameStorageKey) || ''
+      if (/^\d{5,}$/.test(name)) q = name
+    }
+    if (!q) return
+    const res = await api.getProfileByQQ(q)
+    profile.value = res?.data || null
+    if (profile.value && profile.value.nextLevelExp) {
+      expPercent.value = Math.min(100, Math.round((profile.value.currentExp * 100) / (profile.value.nextLevelExp || 1)))
+    }
+  } catch {}
+}
+
+async function prefetchProfile() {
+  try {
+    const api = createApiClient()
+    const q = resolveQQ()
+    if (!q) return
+    const res = await api.getProfileByQQ(q)
+    const data = res?.data
+    beforeExp.value = (data && typeof data.currentExp === 'number') ? data.currentExp : null
+  } catch {}
+}
+
+function resolveQQ(): string {
+  if (useQQFlow.value && qq.value) return qq.value.trim()
+  const name = localStorage.getItem(API_DEFAULTS.displayNameStorageKey) || ''
+  if (/^\d{5,}$/.test(name)) return name
+  return ''
+}
+
+// 移除从文本解析签到经验，统一以经验差计算
 </script>
 
 <template>
@@ -102,13 +170,24 @@ export default {
       {{ themeIcon }}
     </button>
     <div class="form-container">
+      <router-link class="text-link btn-home" to="/"><span class="btn-icon">←</span> 返回首页</router-link>
       <div :class="['form-step', animationClass]">
         <h2>每日签到</h2>
-        <div class="completion-message" v-if="showMessage">
-          <p>{{ message }}</p>
-          <p>即将返回首页...</p>
+      <div class="input-group" v-if="!showMessage && (useQQFlow || !isLoggedIn)">
+        <label for="qq">QQ号</label>
+        <input id="qq" v-model="qq" type="text" placeholder="请输入QQ号" />
+        <div class="input-error" v-if="qqError">{{ qqError }}</div>
+      </div>
+      <div class="completion-message" v-if="showMessage">
+        <p>{{ message }}</p>
+        <div v-if="signStatus==='success'" class="summary">
+          <div class="sum-line"><span class="sum-label">等级</span><span class="sum-value">{{ profile?.level || '-' }}</span></div>
+          <div class="sum-line"><span class="sum-label">当前经验</span><span class="sum-value">{{ (totalExp ?? profile?.currentExp) ?? '-' }}</span></div>
+          <div class="sum-line"><span class="sum-label">签到经验</span><span class="sum-value">{{ signGain ?? '-' }}</span></div>
         </div>
-        <div v-else>
+        <p v-if="autoRedirect">即将返回首页...</p>
+      </div>
+      <div v-else>
           <p style="text-align: center; margin-bottom: 30px;">
             点击下方按钮完成今日签到
           </p>
@@ -116,9 +195,9 @@ export default {
             <button 
               class="btn btn-submit sign-button"
               :class="{ 
-                'sign-success': signStatus === 'success',
-                'sign-error': signStatus === 'error',
-                'sign-in-progress': showMessage
+              'sign-success': signStatus === 'success',
+              'sign-error': signStatus === 'error',
+              'sign-in-progress': showMessage
               }"
               @click="handleSign"
             >
@@ -216,6 +295,27 @@ export default {
   transition: all 0.3s ease;
 }
 
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.input-group input {
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--card-bg);
+  color: var(--text-primary);
+}
+
+.input-error {
+  margin-top: 4px;
+  color: var(--error-color);
+  font-size: 0.85rem;
+}
+
 .sign-button.sign-in-progress {
   transform: scale(1.1);
   width: 100%;
@@ -233,5 +333,12 @@ export default {
   border-color: var(--error-color);
   color: var(--error-color);
 }
+
+.summary { margin-top: 12px; padding: 12px; background: var(--card-bg); border-radius: 12px; box-shadow: var(--shadow-md); text-align: left; }
+.sum-line { display: flex; justify-content: space-between; padding: 8px 10px; background: var(--btn-secondary-bg); border-radius: 10px; margin-bottom: 8px; }
+.sum-label { color: var(--text-muted); }
+.sum-value { color: var(--text-primary); font-weight: 600; }
 </style>
+
+/* back button uses global .text-link .btn-home .btn-icon */
 

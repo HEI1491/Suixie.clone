@@ -1,271 +1,180 @@
-const DEFAULT_BASE_URL = 'https://cors.sh/http://183.131.51.178:7878';
-const DEFAULT_API_KEY = 'temp_c92b19faf3cd3d6da1a958e1603d1ab0';
-const DEFAULT_TOKEN_STORAGE_KEY = 'userToken';
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PASSWORD_REGEX = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*#?&]{8,}$/;
+// API客户端主模块 - 提供统一的API访问接口
 
-export class ApiError extends Error {
-  constructor(message, status = 0, payload) {
-    super(message);
-    this.name = 'ApiError';
-    this.status = status;
-    this.payload = payload;
-    this.reason = message;
-  }
-}
+import { resolveApiConfig } from '@/core/config.js';
+import { createHttpClient } from './httpClient.js';
+import { createTokenStore } from './tokenStore.js';
+import { createAuthService } from './modules/authService.js';
+import { createContentService } from './modules/contentService.js';
 
+/**
+ * API客户端类 - 应用程序与后端API交互的主要接口
+ * 整合了HTTP客户端、token存储和各种服务模块
+ */
 export class ApiClient {
-  constructor({
-    baseUrl = DEFAULT_BASE_URL,
-    port,
-    apiKey = DEFAULT_API_KEY,
-    tokenStorageKey = DEFAULT_TOKEN_STORAGE_KEY,
-  } = {}) {
-    const trimmedBaseUrl = (baseUrl || DEFAULT_BASE_URL).trim();
-    this.baseUrl = trimmedBaseUrl.endsWith(':') && port
-      ? `${trimmedBaseUrl}${port}`
-      : trimmedBaseUrl;
-    this.apiKey = apiKey;
-    this.tokenStorageKey = tokenStorageKey;
-    this.token = this.readToken();
+  /**
+   * 创建API客户端实例
+   * @param {Object} options - 配置选项
+   */
+  constructor(options = {}) {
+    // 解析并合并配置（自定义配置 > 环境变量 > 默认配置）
+    this.config = resolveApiConfig(options);
+    
+    // 创建token存储实例，用于管理用户认证token
+    this.tokenStore = createTokenStore(this.config.tokenStorageKey);
+    
+    // 创建HTTP客户端实例，处理实际的HTTP请求
+    this.http = createHttpClient({
+      baseUrl: this.config.baseUrl,    // API基础URL
+      apiKey: this.config.apiKey,      // API访问密钥
+    });
+
+    // 集成各种服务模块
+    this.services = {
+      // 认证相关服务（登录、注册、找回密码等）
+      ...createAuthService({ http: this.http, tokenStore: this.tokenStore }),
+      // 内容相关服务（获取赞助商信息、封神榜等）
+      ...createContentService({ http: this.http }),
+    };
   }
 
+  /**
+   * 通用HTTP请求方法
+   * @param {string} path - 请求路径
+   * @param {Object} options - 请求选项
+   * @returns {Promise} 返回Promise对象
+   */
+  request(path, options) {
+    return this.http.request(path, options);
+  }
+
+  /**
+   * 读取存储的token
+   * @returns {string|null} 返回token或null
+   */
   readToken() {
-    try {
-      return localStorage.getItem(this.tokenStorageKey);
-    } catch {
-      return null;
-    }
+    return this.tokenStore.read();
   }
 
+  /**
+   * 设置token到存储
+   * @param {string} token - 要存储的token
+   */
   setToken(token) {
-    this.token = token;
-    try {
-      if (token) {
-        localStorage.setItem(this.tokenStorageKey, token);
-      } else {
-        localStorage.removeItem(this.tokenStorageKey);
-      }
-    } catch {
-      // 忽略本地存储错误，避免阻断登录流�?
-    }
+    this.tokenStore.write(token);
   }
 
-  get normalizedBaseUrl() {
-    return this.baseUrl.endsWith('/') ? this.baseUrl : `${this.baseUrl}/`;
+  /**
+   * 清除存储的token
+   */
+  clearToken() {
+    this.tokenStore.clear();
   }
 
-  buildUrl(path, searchParams) {
-    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-    const url = new URL(normalizedPath, this.normalizedBaseUrl);
+  // 以下是认证相关服务的代理方法
 
-    if (searchParams && Object.keys(searchParams).length > 0) {
-      const params = new URLSearchParams();
-      Object.entries(searchParams).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          params.append(key, value);
-        }
-      });
-      const queryString = params.toString();
-      if (queryString) {
-        url.search = queryString;
-      }
-    }
-
-    return url.toString();
+  /**
+   * 发送验证码
+   * @param {string} mail - 邮箱地址
+   * @returns {Promise} 返回Promise对象
+   */
+  sendCode(...args) {
+    return this.services.sendCode(...args);
   }
 
-  async request(path, { method = 'GET', body, searchParams } = {}) {
-    const url = this.buildUrl(path, searchParams);
-    const headers = new Headers({
-      'x-cors-api-key': this.apiKey,
-    });
-
-    let payloadBody;
-    if (body !== undefined) {
-      headers.set('Content-Type', 'application/json');
-      payloadBody = JSON.stringify(body);
-    }
-
-    try {
-      const response = await fetch(url, {
-        method,
-        headers,
-        body: payloadBody,
-      });
-
-      const payload = await this.parseJson(response);
-
-      if (!response.ok || payload.status !== 'success') {
-        throw new ApiError(
-          payload?.reason || response.statusText || 'Request failed',
-          response.status,
-          payload,
-        );
-      }
-
-      return payload;
-    } catch (error) {
-      if (error instanceof ApiError) {
-        throw error;
-      }
-      throw new ApiError('Network error or server unavailable', 0);
-    }
+  /**
+   * 用户登录
+   * @param {string} account - 账号
+   * @param {string} password - 密码
+   * @returns {Promise} 返回Promise对象
+   */
+  login(...args) {
+    return this.services.login(...args);
   }
 
-  async parseJson(response) {
-    try {
-      return await response.json();
-    } catch {
-      throw new ApiError('Invalid server response', response.status || 0);
-    }
+  /**
+   * 用户注册
+   * @param {string} account - 账号
+   * @param {string} password - 密码
+   * @param {string} code - 验证码
+   * @returns {Promise} 返回Promise对象
+   */
+  register(...args) {
+    return this.services.register(...args);
   }
 
-  validateEmail(mail) {
-    if (!mail) {
-      throw new ApiError('Missing email', 400);
-    }
-    if (!EMAIL_REGEX.test(mail)) {
-      throw new ApiError('Invalid email format', 400);
-    }
+  /**
+   * 找回密码
+   * @param {string} account - 账号
+   * @returns {Promise} 返回Promise对象
+   */
+  recover(...args) {
+    return this.services.recover(...args);
   }
 
-  validatePassword(password) {
-    if (!password) {
-      throw new ApiError('Missing password', 400);
-    }
-    if (!PASSWORD_REGEX.test(password)) {
-      throw new ApiError('Weak password', 400);
-    }
+  /**
+   * 用户签到
+   * @param {string} account - 账号
+   * @returns {Promise} 返回Promise对象
+   */
+  sign(...args) {
+    return this.services.sign(...args);
   }
 
-  validateCode(code) {
-    if (!code) {
-      throw new ApiError('Missing mail code', 400);
-    }
-    if (Number.isNaN(Number(code))) {
-      throw new ApiError('Mail code must be numeric', 400);
-    }
+  signUser(...args) {
+    return this.services.signUser(...args);
   }
 
-  async sendCode(mail) {
-    this.validateEmail(mail);
-    const payload = await this.request('/genMailCode', {
-      method: 'GET',
-      searchParams: { mail },
-    });
-
-    if (typeof payload.code === 'undefined') {
-      throw new ApiError('Invalid response format', 500, payload);
-    }
-
-    return { status: 200, code: payload.code };
+  signWithQQ(...args) {
+    return this.services.signWithQQ(...args);
   }
 
-  async login(account, password) {
-    if (!account) {
-      throw new ApiError('Missing username', 400);
-    }
-    if (!password) {
-      throw new ApiError('Missing password', 400);
-    }
-
-    const payload = await this.request('/login', {
-      method: 'POST',
-      body: {
-        type: 'username',
-        identifier: account,
-        password,
-      },
-    });
-
-    if (payload.token) {
-      this.setToken(payload.token);
-    }
-
-    return {
-      status: 200,
-      token: payload.token,
-    };
+  sendQQBindCode(...args) {
+    return this.services.sendQQBindCode(...args);
   }
 
-  async register(account, password, code) {
-    if (!account) {
-      throw new ApiError('Missing username', 400);
-    }
-    this.validatePassword(password);
-    this.validateCode(code);
-
-    const payload = await this.request('/register', {
-      method: 'GET',
-      searchParams: {
-        username: account,
-        password,
-        mailCode: code,
-      },
-    });
-
-    if (payload.token) {
-      this.setToken(payload.token);
-    }
-
-    return {
-      status: 200,
-      message: 'Registration successful',
-    };
+  verifyQQBind(...args) {
+    return this.services.verifyQQBind(...args);
   }
 
-  async recover(account) {
-    if (!account) {
-      throw new ApiError('Missing username', 400);
-    }
-
-    await this.request('/recover', {
-      method: 'GET',
-      searchParams: { username: account },
-    });
-
-    return {
-      status: 200,
-      message: 'Recovery successful',
-    };
+  qqLogin(...args) {
+    return this.services.qqLogin(...args);
   }
 
-  async sign(account) {
-    if (!account) {
-      throw new ApiError('Missing username', 400);
-    }
-    if (!this.token) {
-      throw new ApiError('No token available', 401);
-    }
+  // 以下是内容相关服务的代理方法
 
-    await this.request('/sign', {
-      method: 'GET',
-      searchParams: {
-        username: account,
-        token: this.token,
-      },
-    });
-
-    return {
-      status: 200,
-      message: 'Sign successful',
-    };
+  /**
+   * 获取赞助商信息
+   * @returns {Promise} 返回Promise对象
+   */
+  getSponsor(...args) {
+    return this.services.getSponsor(...args);
   }
 
-  async getSponsor() {
-    const payload = await this.request('/getSponsor');
-    if (!payload?.data) {
-      throw new ApiError('Invalid sponsor response', 500, payload);
-    }
+  /**
+   * 获取封神榜列表
+   * @returns {Promise} 返回Promise对象
+   */
+  getFengshenList(...args) {
+    return this.services.getFengshenList(...args);
+  }
 
-    return {
-      status: 200,
-      ...payload.data,
-    };
+  getProfileByQQ(...args) {
+    return this.services.getProfileByQQ(...args);
+  }
+
+  getUserProfile(...args) {
+    return this.services.getUserProfile(...args);
   }
 }
 
+/**
+ * 创建API客户端实例的工厂函数
+ * @param {Object} options - 配置选项
+ * @returns {ApiClient} 返回API客户端实例
+ */
 export function createApiClient(options) {
   return new ApiClient(options);
 }
+
+// 导出ApiError类，方便外部使用
+export { ApiError } from '@/core/errors.js';

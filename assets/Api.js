@@ -1,7 +1,6 @@
 class Api{
     constructor(){
-        this.url = "http://183.131.51.178:";
-        this.port = "7878";
+        this.base = (typeof window !== 'undefined' ? window.location.origin : '') + "/api";
         this.token = localStorage.getItem('userToken') || null; // 内部存储token
         this.ApiList = {
             "test":"/status",
@@ -11,7 +10,7 @@ class Api{
             "recover":"/recover",
             "sign":"/sign",
         }
-        console.info(`已挂载路由：${this.url}${this.port}，已录入Api列表：${Object.keys(this.ApiList)}`)
+        console.info(`已挂载路由：${this.base}，已录入Api列表：${Object.keys(this.ApiList)}`)
     }
     async sendCode(mail){
         // 检查邮箱是否提供
@@ -31,11 +30,12 @@ class Api{
         }
         try {
             // 发送GET请求
-            const response = await fetch(`${this.url}${this.port}${this.ApiList.sendCode}?mail=${encodeURIComponent(mail)}`, {
+            const response = await fetch(`${this.base}${this.ApiList.sendCode}?mail=${encodeURIComponent(mail)}`, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json'
-                }
+                },
+                credentials: 'include'
             });
             
             if (response.status === 200) {
@@ -73,7 +73,7 @@ class Api{
     async login(account, password){
         try {
             // 发送POST请求进行登录
-            const response = await fetch(`${this.url}${this.port}${this.ApiList.login}`, {
+            const response = await fetch(`${this.base}${this.ApiList.login}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -82,7 +82,8 @@ class Api{
                     type: "username",
                     identifier: account,
                     password: password
-                })
+                }),
+                credentials: 'include'
             });
             
             if (response.status === 200) {
@@ -163,11 +164,12 @@ class Api{
                 password: password,
                 mailCode: code
             }).toString();
-            const response = await fetch(`${this.url}${this.port}${this.ApiList.register}?${params}`, {
+            const response = await fetch(`${this.base}${this.ApiList.register}?${params}`, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json'
-                }
+                },
+                credentials: 'include'
             });
             
             const data = await response.json();
@@ -205,11 +207,12 @@ class Api{
     async recover(account){
         try {
             // 发送GET请求进行密码恢复
-            const response = await fetch(`${this.url}${this.port}${this.ApiList.recover}?username=${encodeURIComponent(account)}`, {
+            const response = await fetch(`${this.base}${this.ApiList.recover}?username=${encodeURIComponent(account)}`, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json'
-                }
+                },
+                credentials: 'include'
             });
             
             if (response.status === 200) {
@@ -255,11 +258,12 @@ class Api{
         
         try {
             // 发送GET请求进行签到
-            const response = await fetch(`${this.url}${this.port}${this.ApiList.sign}?username=${encodeURIComponent(account)}&token=${encodeURIComponent(this.token)}`, {
+            const response = await fetch(`${this.base}${this.ApiList.sign}?username=${encodeURIComponent(account)}&token=${encodeURIComponent(this.token)}`, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json'
-                }
+                },
+                credentials: 'include'
             });
             
             if (response.status === 200) {
