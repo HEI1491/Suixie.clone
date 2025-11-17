@@ -24,11 +24,7 @@ export default {
   <footer class="site-footer">
     <div class="footer-content">
       <a class="beian-link" href="https://beian.mps.gov.cn/#/query/webSearch?code=32058302005589" rel="noreferrer" target="_blank" aria-label="公安备案查询">
-        <span class="beian-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-            <path d="M12 2l7 4v5c0 5-3.5 9-7 11-3.5-2-7-6-7-11V6l7-4zm0 4.2L7 7.9v3.8c0 3.8 2.6 7.2 5 8.9 2.4-1.7 5-5.1 5-8.9V7.9l-5-1.7zM12 10a3 3 0 110 6 3 3 0 010-6z"/>
-          </svg>
-        </span>
+        <img class="beian-img" src="/beian.svg" width="18" height="18" alt="公安备案图标" aria-hidden="true" />
         <span>苏公网安备32058302005589号</span>
       </a>
       <span class="divider">|</span>
@@ -51,6 +47,6 @@ export default {
  .beian-link, .icp-link { color: var(--text-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
  .beian-link:hover, .icp-link:hover { color: var(--link-color); }
  .divider { color: var(--text-muted); }
- .beian-icon { display: inline-flex; align-items: center; justify-content: center; color: #c78a2a; }
+ .beian-img { display: inline-block; vertical-align: middle; }
  .icp-icon { display: inline-flex; align-items: center; justify-content: center; color: #4A90E2; }
 </style>
