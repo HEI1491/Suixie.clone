@@ -117,11 +117,7 @@ export function createHttpClient({ baseUrl, apiKey, timeoutMs = 8000 }) {
       }
 
       // 构建完整的请求URL
-      const bases = [];
-      bases.push(normalizedBaseUrl);
-      const alt = normalizedBaseUrl.replace(/\/?api\/?$/i, '/');
-      if (!bases.includes(alt)) bases.push(alt);
-      if (!bases.includes('')) bases.push('');
+      const bases = [normalizedBaseUrl];
 
       for (const b of bases) {
         const url = buildUrl(b, path, searchParams);
@@ -138,7 +134,14 @@ export function createHttpClient({ baseUrl, apiKey, timeoutMs = 8000 }) {
           clearTimeout(timer);
           const payload = await parseJson(response);
           const successStatuses = new Set(['success', 'successed']);
-          if (!response.ok || !successStatuses.has(payload.status)) {
+          if (!response.ok) {
+            throw new ApiError(
+              payload?.reason || response.statusText || 'Request failed',
+              { status: response.status, payload },
+            );
+          }
+          const hasStatusField = Object.prototype.hasOwnProperty.call(payload || {}, 'status');
+          if (hasStatusField && !successStatuses.has(payload.status)) {
             throw new ApiError(
               payload?.reason || response.statusText || 'Request failed',
               { status: response.status, payload },

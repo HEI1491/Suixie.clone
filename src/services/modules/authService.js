@@ -49,6 +49,17 @@ export function createAuthService({ http, tokenStore }) {
       };
     },
 
+    async changePassword(oldPassword, newPassword) {
+      if (!oldPassword || !newPassword) {
+        throw new ApiError('Missing password', { status: 400 });
+      }
+      const payload = await http.request('/user/changePwd', {
+        method: 'GET',
+        searchParams: { oldPassword, newPassword },
+      });
+      return { status: 200 };
+    },
+
     async register(account, password, code) {
       validators.username(account);
       validators.password(password);

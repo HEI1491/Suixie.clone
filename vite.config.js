@@ -7,7 +7,7 @@ import { resolve } from 'path'        // Node.js路径解析模块
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const proxyTarget = env.VITE_PROXY_TARGET || 'http://183.131.51.178:7878'
+  const proxyTarget = env.VITE_PROXY_TARGET || 'http://localhost:7001'
   return {
     base: '/',
     plugins: [vue()],
@@ -21,7 +21,6 @@ export default defineConfig(({ mode }) => {
         '/api': {
           target: proxyTarget,
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api/, ''),
         }
       }
     }

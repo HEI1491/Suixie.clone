@@ -22,21 +22,22 @@ export function createContentService({ http }) {
     },
 
     async getFengshenList() {
-      const payload = await http.request('/fsb', {
-        method: 'GET',
-      });
-
-      const list = Array.isArray(payload?.data) ? payload.data : [];
-      return {
-        status: 200,
-        list: list.map((item) => ({
-          uuid: item?.uuid ?? '',
-          uid: item?.uid ?? '',
-          gid: item?.gid ?? '',
-          qq: item?.qq ?? '',
-          last_ip: item?.last_ip ?? '',
-        })),
-      };
+      try {
+        const payload = await http.request('/fsb', { method: 'GET' });
+        const list = Array.isArray(payload?.data) ? payload.data : [];
+        return {
+          status: 200,
+          list: list.map((item) => ({
+            uuid: item?.uuid ?? '',
+            uid: item?.uid ?? '',
+            gid: item?.gid ?? '',
+            qq: item?.qq ?? '',
+            last_ip: item?.last_ip ?? '',
+          })),
+        };
+      } catch (_) {
+        return { status: 200, list: [] };
+      }
     },
 
     async getProfileByQQ(qq) {
@@ -81,6 +82,20 @@ export function createContentService({ http }) {
           registerTime: regTime,
         },
       };
+    },
+
+    async getServerStatus() {
+      const payload = await http.request('/status', { method: 'GET' });
+      return { status: 200, info: String(payload?.info || '') };
+    },
+
+    async broadcast(pwd, msg) {
+      if (!pwd || !msg) throw new ApiError('Missing parameters', { status: 400 });
+      const payload = await http.request('/broadcast', {
+        method: 'GET',
+        searchParams: { pwd, msg },
+      });
+      return { status: 200 };
     },
 
     async getUserProfile() {
