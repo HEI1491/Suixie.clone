@@ -5,7 +5,7 @@ export default {
   name: 'App',  // 组件名称
   data(){
     return {
-
+      beianImg: '/beian.png'
     }
   },
   mounted(){
@@ -24,7 +24,7 @@ export default {
   <footer class="site-footer">
     <div class="footer-content">
       <a class="beian-link" href="https://beian.mps.gov.cn/#/query/webSearch?code=32058302005589" rel="noreferrer" target="_blank" aria-label="公安备案查询">
-        <img class="beian-img" src="/beian.svg" width="18" height="18" alt="公安备案图标" aria-hidden="true" />
+        <img class="beian-img" :src="beianImg" width="18" alt="公安备案图标" aria-hidden="true" />
         <span>苏公网安备32058302005589号</span>
       </a>
       <span class="divider">|</span>
