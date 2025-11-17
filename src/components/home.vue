@@ -244,10 +244,18 @@ const fetchServerStatus = async (server) => {
   server.status = { online: false, message: '无法连接到服务器' }
 }
 
+const fetchServerStatusRetry = async (server, attempts = 5, delay = 11) => {
+  for (let i = 0; i < attempts; i++) {
+    await fetchServerStatus(server)
+    if (server.status && server.status.online) return
+    await new Promise(r => setTimeout(r, delay))
+  }
+}
+
 // 获取所有服务器状态
 const fetchAllServerStatus = async () => {
   serverLoading.value = true
-  await Promise.all(servers.value.map(server => fetchServerStatus(server)))
+  await Promise.all(servers.value.map(server => fetchServerStatusRetry(server)))
   serverLoading.value = false
 }
 
@@ -411,7 +419,7 @@ onMounted(() => {
             <div class="server-header">
               <div class="server-info">
                 <div class="server-name">{{ server.name }}</div>
-                <div class="server-status-indicator" @click="fetchServerStatus(server)" title="点击刷新服务器状态">
+                <div class="server-status-indicator" @click="fetchServerStatusRetry(server)" title="点击刷新服务器状态">
                   {{ server.status?.online ? '在线' : '离线' }}
                 </div>
               </div>
