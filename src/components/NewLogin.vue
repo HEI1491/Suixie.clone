@@ -369,7 +369,7 @@ const handleLogin = async () => {
           const prof1 = await api.getUserProfile();
           sumExpBefore.value = prof1?.data?.currentExp ?? null;
         } catch {}
-        try {
+        try { 
           await api.sign();
         } catch {}
         try {
