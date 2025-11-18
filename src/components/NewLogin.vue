@@ -358,6 +358,11 @@ const handleLogin = async () => {
     if (loginMethod.value === 'account') {
       const result = await api.login(loginForm.username, loginForm.password);
       if (result.status === 200) {
+        const token = api.readToken?.() || localStorage.getItem(API_DEFAULTS.tokenStorageKey);
+        if (!token) {
+          showMessage('未获取到登录凭证，请重试', { type: 'error' });
+          return;
+        }
         try { localStorage.setItem(API_DEFAULTS.displayNameStorageKey, loginForm.username); } catch {}
         try { localStorage.setItem(API_DEFAULTS.loginTimestampStorageKey, String(Date.now())); } catch {}
         try {
@@ -391,6 +396,11 @@ const handleLogin = async () => {
         try {
           const result = await api.qqLogin(loginForm.qq, loginForm.verificationCode);
           if (result.status === 200) {
+            const token = api.readToken?.() || localStorage.getItem(API_DEFAULTS.tokenStorageKey);
+            if (!token) {
+              showMessage('未获取到登录凭证，请重试', { type: 'error' });
+              return;
+            }
             try { localStorage.setItem(API_DEFAULTS.displayNameStorageKey, loginForm.qq); } catch {}
             try { localStorage.setItem(API_DEFAULTS.loginTimestampStorageKey, String(Date.now())); } catch {}
             animationClass.value = 'slide-out';
