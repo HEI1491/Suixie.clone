@@ -51,7 +51,7 @@
                 class="method-btn"
                 :class="{ active: loginMethod === 'qq' }"
                 @click="loginMethod = 'qq'">
-              QQ验证（等柠檬开放）
+              QQ验证（等嘿开放）
             </button>
           </div>
           <div class="button-group">

@@ -64,10 +64,23 @@ function buildUrl(baseUrl, path, searchParams) {
  * @throws {ApiError} 当响应格式无效时抛出错误
  */
 async function parseJson(response) {
+  const ct = (response.headers && response.headers.get && response.headers.get('content-type')) || '';
+  const isJson = typeof ct === 'string' && ct.toLowerCase().includes('application/json');
+  if (isJson) {
+    try {
+      return await response.json();
+    } catch {
+      throw new ApiError('Invalid server response', { status: response.status || 0 });
+    }
+  }
   try {
-    return await response.json();
+    const text = await response.text();
+    try {
+      return JSON.parse(text);
+    } catch {
+      return { status: response.ok ? 200 : (response.status || 0), text };
+    }
   } catch {
-    // 解析失败时抛出API错误
     throw new ApiError('Invalid server response', { status: response.status || 0 });
   }
 }
@@ -81,7 +94,6 @@ async function parseJson(response) {
  * @returns {Object} HTTP客户端对象
  */
 export function createHttpClient({ baseUrl, apiKey, timeoutMs = 8000 }) {
-  // 标准化基础URL
   const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
 
   return {
@@ -116,8 +128,22 @@ export function createHttpClient({ baseUrl, apiKey, timeoutMs = 8000 }) {
         payloadBody = JSON.stringify(body);
       }
 
-      // 构建完整的请求URL
-      const bases = [normalizedBaseUrl];
+      const bases = [];
+      const add = (b) => {
+        const v = normalizeBaseUrl(b);
+        if (!bases.includes(v)) bases.push(v);
+      };
+      if (!normalizedBaseUrl) {
+        add('');
+        add('/api');
+      } else if (/^https?:\/\//i.test(normalizedBaseUrl)) {
+        add(normalizedBaseUrl);
+        add(new URL('api/', normalizedBaseUrl).toString());
+      } else {
+        add(normalizedBaseUrl);
+        if (normalizedBaseUrl.replace(/\/$/, '') !== '/api') add('/api');
+        else add('');
+      }
 
       for (const b of bases) {
         const url = buildUrl(b, path, searchParams);
@@ -133,19 +159,37 @@ export function createHttpClient({ baseUrl, apiKey, timeoutMs = 8000 }) {
           });
           clearTimeout(timer);
           const payload = await parseJson(response);
-          const successStatuses = new Set(['success', 'successed']);
+          const successStatuses = new Set(['success', 'successed', 'ok', 'OK', 'SUCCESS', 'Success']);
           if (!response.ok) {
-            throw new ApiError(
+            const err = new ApiError(
               payload?.reason || response.statusText || 'Request failed',
               { status: response.status, payload },
             );
+            if (response.status === 404) {
+              continue;
+            }
+            throw err;
           }
           const hasStatusField = Object.prototype.hasOwnProperty.call(payload || {}, 'status');
-          if (hasStatusField && !successStatuses.has(payload.status)) {
-            throw new ApiError(
-              payload?.reason || response.statusText || 'Request failed',
-              { status: response.status, payload },
-            );
+          const hasCodeField = Object.prototype.hasOwnProperty.call(payload || {}, 'code');
+          const hasSuccessField = Object.prototype.hasOwnProperty.call(payload || {}, 'success');
+          const hasTokenField = Object.prototype.hasOwnProperty.call(payload || {}, 'token');
+          if (hasStatusField || hasCodeField || hasSuccessField) {
+            const st = payload.status;
+            const code = payload.code;
+            const succ = payload.success;
+            const isSuccess = (typeof st === 'string' && (successStatuses.has(st) || st === '200'))
+              || (typeof st === 'number' && st === 200)
+              || (typeof st === 'boolean' && st === true)
+              || (typeof code === 'number' && code === 200)
+              || (typeof code === 'string' && code === '200')
+              || (typeof succ === 'boolean' && succ === true);
+            if (!isSuccess && !(hasTokenField && payload.token)) {
+              throw new ApiError(
+                payload?.reason || response.statusText || 'Request failed',
+                { status: response.status, payload },
+              );
+            }
           }
           return payload;
         } catch (error) {
