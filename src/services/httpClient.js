@@ -136,6 +136,18 @@ export function createHttpClient({ baseUrl, apiKey, timeoutMs = 8000 }) {
       if (!normalizedBaseUrl) {
         add('');
         add('/api');
+        try {
+          const envTarget = (typeof import.meta !== 'undefined' && import.meta.env) ? (import.meta.env.VITE_PROXY_TARGET || '') : '';
+          if (envTarget) {
+            add(envTarget);
+            try {
+              add(new URL('api/', envTarget).toString());
+            } catch { add(envTarget.endsWith('/') ? (envTarget + 'api/') : (envTarget + '/api/')); }
+          } else {
+            add('http://localhost:7001');
+            add('http://localhost:7001/api');
+          }
+        } catch {}
       } else if (/^https?:\/\//i.test(normalizedBaseUrl)) {
         add(normalizedBaseUrl);
         add(new URL('api/', normalizedBaseUrl).toString());

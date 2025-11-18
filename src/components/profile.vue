@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
+import { API_DEFAULTS } from '@/core/constants.js'
 import { useRouter } from 'vue-router'
 import { useTheme } from '@/composables/useTheme.js'
 import { useApi } from '@/plugins/api.js'
@@ -13,6 +14,9 @@ const { showMessage } = useSnackbar()
 const loading = ref(true)
 const error = ref('')
 const profile = ref({ username: '', email: '', qq: '', gid: '', level: '', currentExp: 0, nextLevelExp: 0, coin: 0, onlineMinutes: 0, registerTime: '' })
+const isLoggedIn = ref(false)
+const fallbackQQ = ref('')
+const usingQQFallback = ref(false)
 const expPercent = computed(() => {
   const cur = Number(profile.value.currentExp || 0)
   const next = Number(profile.value.nextLevelExp || 0)
@@ -30,6 +34,11 @@ onMounted(async () => {
   loading.value = true
   error.value = ''
   try {
+    const t = localStorage.getItem(API_DEFAULTS.tokenStorageKey)
+    const atStr = localStorage.getItem(API_DEFAULTS.loginTimestampStorageKey)
+    const at = atStr ? parseInt(atStr) : 0
+    const expired = !at || Date.now() - at > API_DEFAULTS.loginMaxAgeMs
+    isLoggedIn.value = !!t && !expired
     const res = await api.getUserProfile()
     const data = res?.data || {}
     profile.value = {
@@ -45,8 +54,36 @@ onMounted(async () => {
       registerTime: data.registerTime || '',
     }
   } catch (e) {
-    error.value = e?.reason || e?.message || '获取资料失败'
-    showMessage(error.value, { type: 'error' })
+    const reason = e?.reason || e?.message || ''
+    const name = localStorage.getItem(API_DEFAULTS.displayNameStorageKey) || ''
+    fallbackQQ.value = /^\d{5,}$/.test(name) ? name : ''
+    if (fallbackQQ.value) {
+      try {
+        const res2 = await api.getProfileByQQ(fallbackQQ.value)
+        const data2 = res2?.data || {}
+        profile.value = {
+          username: data2.username || '',
+          email: '',
+          qq: data2.qq || fallbackQQ.value,
+          gid: data2.gid || '',
+          level: data2.level || '',
+          currentExp: typeof data2.currentExp === 'number' ? data2.currentExp : 0,
+          nextLevelExp: typeof data2.nextLevelExp === 'number' ? data2.nextLevelExp : 0,
+          coin: typeof data2.coin === 'number' ? data2.coin : 0,
+          onlineMinutes: typeof data2.onlineMinutes === 'number' ? data2.onlineMinutes : 0,
+          registerTime: data2.registerTime || '',
+        }
+        usingQQFallback.value = true
+        error.value = ''
+        showMessage('未登录，已显示QQ资料', { type: 'info' })
+      } catch (e2) {
+        error.value = reason || e2?.reason || e2?.message || '获取资料失败'
+        showMessage(error.value, { type: 'error' })
+      }
+    } else {
+      error.value = reason || '获取资料失败'
+      showMessage(error.value, { type: 'error' })
+    }
   } finally {
     loading.value = false
   }
@@ -62,6 +99,7 @@ onMounted(async () => {
         <h2>个人主页</h2>
         <div v-if="loading" class="completion-message"><p>正在加载...</p></div>
         <div v-else>
+          <div v-if="usingQQFallback" class="completion-message"><p>当前显示为QQ资料，登录后可查看完整账户信息</p></div>
           <div class="summary">
             <div class="sum-line"><span class="sum-label">账号</span><span class="sum-value">{{ profile.username || '-' }}</span></div>
             <div class="sum-line"><span class="sum-label">绑定邮箱</span><span class="sum-value">{{ profile.email || '-' }}</span></div>
@@ -75,6 +113,9 @@ onMounted(async () => {
             <div class="sum-line"><span class="sum-label">柠檬币</span><span class="sum-value">{{ profile.coin }}</span></div>
             <div class="sum-line"><span class="sum-label">在线时长(分钟)</span><span class="sum-value">{{ profile.onlineMinutes }}</span></div>
             <div class="sum-line"><span class="sum-label">注册时间</span><span class="sum-value">{{ profile.registerTime || '-' }}</span></div>
+          </div>
+          <div v-if="error" class="button-group" style="margin-top: 10px;">
+            <router-link class="btn btn-submit" to="/login?redirect=/profile">去登录</router-link>
           </div>
         </div>
       </div>
