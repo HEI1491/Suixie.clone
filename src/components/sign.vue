@@ -82,6 +82,10 @@ async function handleSign() {
       }
     }
     if (!qq.value) {
+      const auto = resolveQQ()
+      if (auto) qq.value = auto
+    }
+    if (!qq.value) {
       qqError.value = '请输入QQ号'
       showMessage.value = false
       signStatus.value = null
@@ -141,6 +145,9 @@ async function tryLoadProfile() {
       const res = await api.getUserProfile()
       profile.value = res?.data || null
     }
+    if (!qq.value && profile.value && /^\d{5,}$/.test(String(profile.value.qq || ''))) {
+      qq.value = String(profile.value.qq)
+    }
     if (profile.value && profile.value.nextLevelExp) {
       expPercent.value = Math.min(100, Math.round((profile.value.currentExp * 100) / (profile.value.nextLevelExp || 1)))
     }
@@ -159,6 +166,9 @@ async function prefetchProfile() {
       data = res?.data
     }
     beforeExp.value = (data && typeof data.currentExp === 'number') ? data.currentExp : null
+    if (!qq.value && data && /^\d{5,}$/.test(String(data.qq || ''))) {
+      qq.value = String(data.qq)
+    }
   } catch {}
 }
 
