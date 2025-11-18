@@ -19,11 +19,24 @@ let timer = null
 const boundStatus = ref('')
 const boundQQ = ref('')
 const isLoggedIn = ref(!!localStorage.getItem(API_DEFAULTS.tokenStorageKey))
+const checkLogin = () => {
+  const t = localStorage.getItem(API_DEFAULTS.tokenStorageKey)
+  const atStr = localStorage.getItem(API_DEFAULTS.loginTimestampStorageKey)
+  const at = atStr ? parseInt(atStr) : 0
+  const expired = !at || Date.now() - at > API_DEFAULTS.loginMaxAgeMs
+  isLoggedIn.value = !!t && !expired
+}
 
 const validateQQ = (v) => /^\d{5,}$/.test(String(v || '').trim())
 
 const sendBindCode = async () => {
   if (countdown.value > 0) return
+  checkLogin()
+  if (!isLoggedIn.value) {
+    showMessage('请先登录账号后再绑定QQ', { type: 'warning' })
+    router.push({ path: '/login', query: { redirect: '/qqBind' } })
+    return
+  }
   if (!validateQQ(qq.value)) {
     showMessage('请输入有效的QQ号', { type: 'warning' })
     return
@@ -87,6 +100,7 @@ onMounted(async () => {
     const name = localStorage.getItem(API_DEFAULTS.displayNameStorageKey) || ''
     if (/^\d{5,}$/.test(name)) qq.value = name
   } catch {}
+  checkLogin()
   try {
     if (!qq.value && isLoggedIn.value) {
       const prof = await api.getUserProfile()
@@ -100,6 +114,12 @@ onMounted(async () => {
 const verifyAndBind = async () => {
   if (!code.value || !/^\d+$/.test(String(code.value))) {
     showMessage('请输入数字绑定码', { type: 'warning' })
+    return
+  }
+  checkLogin()
+  if (!isLoggedIn.value) {
+    showMessage('请先登录账号后再绑定QQ', { type: 'warning' })
+    router.push({ path: '/login', query: { redirect: '/qqBind' } })
     return
   }
   isLoading.value = true

@@ -382,7 +382,7 @@ onMounted(() => {
           <button class="header-btn register-btn" @click="navigateTo('register')">注册</button>
         </template>
         <template v-else>
-          <button class="header-btn account-btn" disabled>账号 {{ userName || userId }}</button>
+          <button class="header-btn account-btn" @click="navigateTo('profile')">账号 {{ userName || userId }}</button>
           <button class="header-btn logout-btn" @click="logout">退出</button>
         </template>
       </div>

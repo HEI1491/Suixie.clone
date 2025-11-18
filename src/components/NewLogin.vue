@@ -227,11 +227,14 @@
 <script setup>
 import { ref, reactive, onBeforeUnmount } from 'vue';
 import { useTheme } from '../composables/useTheme.js';
+import { useRouter, useRoute } from 'vue-router';
 import { useApi } from '@/plugins/api.js';
 import { API_DEFAULTS } from '@/core/constants.js';
 import { useSnackbar } from '../composables/useSnackbar.js';
 
 const { themeToggleLabel, themeIcon, cycleThemePreference } = useTheme();
+const router = useRouter();
+const route = useRoute();
 const api = useApi();
 const { showMessage } = useSnackbar();
 
@@ -389,6 +392,10 @@ const handleLogin = async () => {
           setTimeout(() => {
             animationClass.value = '';
           }, 300);
+          try {
+            const r = String((route.query && route.query.redirect) || '');
+            if (r) router.push(r);
+          } catch {}
         }, 300);
       }
     } else {
@@ -408,6 +415,10 @@ const handleLogin = async () => {
               currentStep.value = 5;
               animationClass.value = 'slide-in';
               setTimeout(() => { animationClass.value = ''; }, 300);
+              try {
+                const r = String((route.query && route.query.redirect) || '');
+                if (r) router.push(r);
+              } catch {}
             }, 300);
           }
         } catch (err) {
