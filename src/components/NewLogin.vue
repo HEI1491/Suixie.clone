@@ -225,7 +225,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onBeforeUnmount } from 'vue';
+import { ref, reactive, onBeforeUnmount, onMounted } from 'vue';
 import { useTheme } from '../composables/useTheme.js';
 import { useRouter, useRoute } from 'vue-router';
 import { useApi } from '@/plugins/api.js';
@@ -507,6 +507,16 @@ onBeforeUnmount(() => {
     clearInterval(timer);
   }
 });
+
+onMounted(() => {
+  try {
+    const preMsg = localStorage.getItem(API_DEFAULTS.preLoginMessageKey);
+    if (preMsg) {
+      showMessage(preMsg, { type: 'warning', duration: 3000 });
+      localStorage.removeItem(API_DEFAULTS.preLoginMessageKey);
+    }
+  } catch {}
+});
 </script>
 
 <style scoped src="../assets/NewLogin.css"></style>
@@ -516,10 +526,3 @@ onBeforeUnmount(() => {
 .sum-label { color: var(--text-muted); }
 .sum-value { color: var(--text-primary); font-weight: 600; }
 </style>
-try {
-  const preMsg = localStorage.getItem(API_DEFAULTS.preLoginMessageKey);
-  if (preMsg) {
-    showMessage(preMsg, { type: 'warning', duration: 3000 });
-    localStorage.removeItem(API_DEFAULTS.preLoginMessageKey);
-  }
-} catch {}

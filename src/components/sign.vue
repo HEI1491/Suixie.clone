@@ -363,5 +363,3 @@ function resolveQQ(): string {
 .sum-value { color: var(--text-primary); font-weight: 600; }
 </style>
 
-/* back button uses global .text-link .btn-home .btn-icon */
-

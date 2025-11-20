@@ -1,6 +1,7 @@
 // HTTP客户端模块 - 处理所有HTTP请求的核心模块
 
 import { ApiError } from '@/core/errors.js';
+import { API_DEFAULTS } from '@/core/constants.js';
 
 /**
  * 标准化基础URL
@@ -114,6 +115,10 @@ export function createHttpClient({ baseUrl, apiKey, timeoutMs = 8000 }) {
         ...customHeaders,
       });
       headers.set('Accept', 'application/json');
+      try {
+        const t = localStorage.getItem(API_DEFAULTS.tokenStorageKey) || '';
+        if (t) headers.set('Authorization', `Bearer ${t}`);
+      } catch {}
       // 仅在使用 cors.sh 代理时附加 API 密钥请求头
       if (apiKey && normalizedBaseUrl.includes('cors.sh')) {
         headers.set('x-cors-api-key', apiKey);

@@ -232,7 +232,6 @@ const handleBotSend = async () => {
       content: reply
     })
   } catch (error) {
-    console.error(error)
     chatHistory.value.push({
       id: Date.now() + 2,
       role: 'assistant',

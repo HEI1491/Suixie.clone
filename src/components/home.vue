@@ -34,7 +34,6 @@ const fetchFengshenList = async () => {
     const res = await apiClient.getFengshenList()
     fengshenList.value = res.list || []
   } catch (err) {
-    console.error('获取封神榜失败:', err)
     fengshenError.value = err?.reason || err?.message || '获取封神榜失败'
     fengshenList.value = []
   } finally {

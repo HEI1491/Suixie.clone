@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { createApiClient } from '@/services/apiClient.js'
 import { useTheme } from '@/composables/useTheme.js'
 
@@ -95,4 +94,3 @@ const fetchProfile = async () => {
 
 /* back button uses global .text-link .btn-home .btn-icon */
 </style>
-const router = useRouter()

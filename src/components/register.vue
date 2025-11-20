@@ -71,7 +71,6 @@ const sendVerificationCode = async () => {
     }, 1000);
     showMessage('\u9a8c\u8bc1\u7801\u5df2\u53d1\u9001\uff0c\u8bf7\u67e5\u6536\u90ae\u7bb1', { type: 'success' });
   } catch (error) {
-    console.error('\u53d1\u9001\u9a8c\u8bc1\u7801\u5931\u8d25:', error);
     showMessage(error.reason || error.message || '\u53d1\u9001\u9a8c\u8bc1\u7801\u5931\u8d25', { type: 'error' });
   } finally {
     isLoading.value = false;
@@ -100,7 +99,6 @@ const sendQqVerificationCode = async () => {
     }, 1000);
     showMessage('\u7ed1\u5b9a\u7801\u5df2\u53d1\u9001\u81f3QQ\u90ae\u7bb1\uff0c\u8bf7\u67e5\u6536', { type: 'success' });
   } catch (error) {
-    console.error('\u53d1\u9001QQ\u7ed1\u5b9a\u7801\u5931\u8d25:', error);
     showMessage(error.reason || error.message || '\u53d1\u9001QQ\u7ed1\u5b9a\u7801\u5931\u8d25', { type: 'error' });
   } finally {
     isLoading.value = false;
@@ -228,7 +226,6 @@ const handleSubmit = async () => {
     showMessage('\u6ce8\u518c\u6210\u529f！', { type: 'success' });
     currentStep.value = 7;
   } catch (error) {
-    console.error('\u6ce8\u518c\u5931\u8d25:', error);
     const reason = error.reason || error.message || '\u6ce8\u518c\u5931\u8d25';
     showMessage(`\u6ce8\u518c\u5931\u8d25: ${reason}`, { type: 'error' });
   } finally {
