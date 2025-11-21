@@ -194,7 +194,7 @@
               </p>
               <button
                   class="btn-resend"
-                  @click="sendVerificationCode"
+                  @click="loginMethod === 'qq' ? sendQQCode() : sendVerificationCode()"
                   :disabled="countdown > 0">
                 {{ countdown > 0 ? `重新发送(${countdown}s)` : '重新发送' }}
               </button>

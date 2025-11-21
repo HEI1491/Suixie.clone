@@ -63,7 +63,6 @@ const sendBindCode = async () => {
 
 const checkBindStatus = async () => {
   try {
-    // 优先从当前账号资料读取绑定QQ
     try {
       const prof = await api.getUserProfile()
       const data = prof?.data || null
@@ -74,8 +73,6 @@ const checkBindStatus = async () => {
         return
       }
     } catch {}
-
-    // 其次按输入的QQ查询资料并比对
     const targetQQ = (qq.value && validateQQ(qq.value)) ? qq.value.trim() : ''
     if (targetQQ) {
       const res = await api.getProfileByQQ(targetQQ)
@@ -143,6 +140,8 @@ const verifyAndBind = async () => {
   }
 }
 
+const unbind = async () => {}
+
 onBeforeUnmount(() => {
   if (timer) clearInterval(timer)
 })
@@ -176,6 +175,7 @@ onBeforeUnmount(() => {
               {{ countdown > 0 ? `重新发送(${countdown}s)` : '发送绑定码' }}
             </button>
             <button class="btn-resend" @click="checkBindStatus" :disabled="isLoading">检测绑定状态</button>
+            <button class="btn-resend" @click="unbind" :disabled="isLoading">解绑</button>
           </div>
         </div>
         <div class="button-group">

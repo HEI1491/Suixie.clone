@@ -211,12 +211,22 @@ const handleSubmit = async () => {
     try { localStorage.setItem(API_DEFAULTS.displayNameStorageKey, formData.account); } catch {}
     try {
       if (validateQQ(formData.qq) && formData.qqVerificationCode?.trim()) {
-        const res = await api.verifyQQBind(formData.qqVerificationCode.trim());
-        const bound = res?.qq ? String(res.qq) : '';
-        if (bound && bound !== String(formData.qq).trim()) {
-          showMessage('\u7ed1\u5b9a\u6210\u529f\uff0c\u4f46QQ\u53f7\u4e0e\u8f93\u5165\u4e0d\u4e00\u81f4', { type: 'warning' });
-        } else {
-          showMessage('\u7ed1\u5b9aQQ\u6210\u529f', { type: 'success' });
+        try {
+          const r = await api.bindQQ(String(formData.qq).trim(), formData.qqVerificationCode.trim());
+          const bound = r?.qq ? String(r.qq) : '';
+          if (bound && bound !== String(formData.qq).trim()) {
+            showMessage('\u7ed1\u5b9a\u6210\u529f\uff0c\u4f46QQ\u53f7\u4e0e\u8f93\u5165\u4e0d\u4e00\u81f4', { type: 'warning' });
+          } else {
+            showMessage('\u7ed1\u5b9aQQ\u6210\u529f', { type: 'success' });
+          }
+        } catch {
+          const res = await api.verifyQQBind(formData.qqVerificationCode.trim());
+          const bound = res?.qq ? String(res.qq) : '';
+          if (bound && bound !== String(formData.qq).trim()) {
+            showMessage('\u7ed1\u5b9a\u6210\u529f\uff0c\u4f46QQ\u53f7\u4e0e\u8f93\u5165\u4e0d\u4e00\u81f4', { type: 'warning' });
+          } else {
+            showMessage('\u7ed1\u5b9aQQ\u6210\u529f', { type: 'success' });
+          }
         }
       }
     } catch (e) {

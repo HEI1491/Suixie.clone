@@ -25,25 +25,21 @@ function normalizeBaseUrl(baseUrl) {
  * @returns {string} 完整的请求URL
  */
 function buildUrl(baseUrl, path, searchParams) {
-  // 确保路径以斜杠开头
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-
-  // 支持相对基本路径（例如 '/api'）
   let full = '';
   if (!baseUrl) {
     full = normalizedPath;
   } else if (/^https?:\/\//i.test(baseUrl)) {
-    full = new URL(normalizedPath, baseUrl).toString();
+    const b = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+    const p = normalizedPath.startsWith('/') ? normalizedPath.slice(1) : normalizedPath;
+    full = `${b}/${p}`;
   } else {
     const base = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
     full = `${base}${normalizedPath}`;
   }
-
-  // 处理查询参数
   if (searchParams && Object.keys(searchParams).length > 0) {
     const params = new URLSearchParams();
     Object.entries(searchParams).forEach(([key, value]) => {
-      // 过滤掉undefined和null值
       if (value !== undefined && value !== null) {
         params.append(key, value);
       }
@@ -53,7 +49,6 @@ function buildUrl(baseUrl, path, searchParams) {
       full = `${full}?${queryString}`;
     }
   }
-
   return full;
 }
 
@@ -155,7 +150,10 @@ export function createHttpClient({ baseUrl, apiKey, timeoutMs = 8000 }) {
         } catch {}
       } else if (/^https?:\/\//i.test(normalizedBaseUrl)) {
         add(normalizedBaseUrl);
-        add(new URL('api/', normalizedBaseUrl).toString());
+        const endsWithApi = /\/api\/?$/.test(normalizedBaseUrl);
+        if (!endsWithApi) {
+          add(new URL('api/', normalizedBaseUrl).toString());
+        }
       } else {
         add(normalizedBaseUrl);
         if (normalizedBaseUrl.replace(/\/$/, '') !== '/api') add('/api');

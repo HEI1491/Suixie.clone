@@ -45,11 +45,13 @@ export function resolveApiConfig(overrides = {}) {
   const port = overrides.port ?? env.VITE_API_PORT ?? API_DEFAULTS.port;
   const apiKey = overrides.apiKey ?? env.VITE_API_KEY ?? API_DEFAULTS.apiKey;
   const tokenStorageKey = overrides.tokenStorageKey ?? env.VITE_TOKEN_STORAGE_KEY ?? API_DEFAULTS.tokenStorageKey;
+  const mailAuthCode = overrides.mailAuthCode ?? env.VITE_MAIL_AUTH_CODE ?? '';
 
   // 返回标准化的配置对象
   return {
     baseUrl: normalizeBaseUrl(baseUrl, port),  // 标准化的API基础URL
     apiKey,                                    // API访问密钥
     tokenStorageKey,                          // 本地存储中token的键名
+    mailAuthCode,
   };
 }

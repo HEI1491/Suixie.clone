@@ -31,7 +31,7 @@ export class ApiClient {
     // 集成各种服务模块
     this.services = {
       // 认证相关服务（登录、注册、找回密码等）
-      ...createAuthService({ http: this.http, tokenStore: this.tokenStore }),
+      ...createAuthService({ http: this.http, tokenStore: this.tokenStore, mailAuthCode: this.config.mailAuthCode }),
       // 内容相关服务（获取赞助商信息、封神榜等）
       ...createContentService({ http: this.http }),
     };
@@ -138,6 +138,18 @@ export class ApiClient {
 
   qqLogin(...args) {
     return this.services.qqLogin(...args);
+  }
+
+  getQQBindStatus(...args) {
+    return this.services.getQQBindStatus(...args);
+  }
+
+  bindQQ(...args) {
+    return this.services.bindQQ(...args);
+  }
+
+  unbindQQ(...args) {
+    return this.services.unbindQQ(...args);
   }
 
   // 以下是内容相关服务的代理方法
