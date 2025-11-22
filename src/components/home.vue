@@ -20,24 +20,24 @@ const servers = ref([
 ])
 const serverLoading = ref(false)
 
-// 封神榜相关
+// 神人榜相关
 import { createApiClient } from '@/services/apiClient.js'
 const apiClient = createApiClient()
-const fengshenLoading = ref(false)
-const fengshenError = ref('')
-const fengshenList = ref([])
+const shenrenLoading = ref(false)
+const shenrenError = ref('')
+const shenrenList = ref([])
 
-const fetchFengshenList = async () => {
-  fengshenLoading.value = true
-  fengshenError.value = ''
+const fetchShenrenList = async () => {
+  shenrenLoading.value = true
+  shenrenError.value = ''
   try {
-    const res = await apiClient.getFengshenList()
-    fengshenList.value = res.list || []
+    const res = await apiClient.getShenrenList()
+    shenrenList.value = res.list || []
   } catch (err) {
-    fengshenError.value = err?.reason || err?.message || '获取封神榜失败'
-    fengshenList.value = []
+    shenrenError.value = err?.reason || err?.message || '获取神人榜失败'
+    shenrenList.value = []
   } finally {
-    fengshenLoading.value = false
+    shenrenLoading.value = false
   }
 }
 
@@ -51,8 +51,8 @@ const features = ref([
   { id: 0, title: '每日签到', path: 'sign', icon: '📅' },
   { id: 1, title: '幽柠规则', path: 'bindCode', icon: '📜' },
   { id: 2, title: '找回密码', path: 'recover', icon: '🔑' },
-  { id: 3, title: '联系客服', path: 'support', icon: '🆘' },
-  { id: 4, title: '绑定QQ', path: 'qqBind', icon: '🔗' }
+  { id: 3, title: '联系客服', path: 'support', icon: '🆘' }
+  // { id: 4, title: '绑定QQ', path: 'qqBind', icon: '🔗' }
 ])
 
 // 导航到指定路径
@@ -338,8 +338,8 @@ onMounted(() => {
     // 获取服务器状态
     fetchAllServerStatus()
     
-    // 获取封神榜
-    fetchFengshenList()
+    // 获取神人榜
+    fetchShenrenList()
     syncAuth()
     const onStorage = (e: StorageEvent) => {
       if (e.key === tokenKey) syncAuth()
@@ -349,13 +349,13 @@ onMounted(() => {
     // 每60秒刷新一次服务器状态（从API获取数据而不是刷新网页）
     const statusInterval = setInterval(fetchAllServerStatus, 60000)
 
-    // 每300秒刷新一次封神榜
-    const fengshenInterval = setInterval(fetchFengshenList, 300000)
+    // 每300秒刷新一次神人榜
+    const shenrenInterval = setInterval(fetchShenrenList, 300000)
     
     // 清理定时器
     onUnmounted(() => {
       clearInterval(statusInterval)
-      clearInterval(fengshenInterval)
+      clearInterval(shenrenInterval)
       window.removeEventListener('storage', onStorage as any)
     })
   })
@@ -506,62 +506,60 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- 功能卡片区，只保留封神榜独立卡片 -->
+      <!-- 功能卡片区，只保留神人榜独立卡片 -->
       <section class="card-grid">
-        <!-- 封神榜独立卡片 -->
-        <article class="info-card fengshen-card">
+        <!-- 神人榜独立卡片 -->
+        <article class="info-card shenren-card">
           <header class="info-card-header">
-            <span class="info-card-icon">⚔️</span>
-            <h2 class="info-card-title">封神榜状态</h2>
+            <span class="info-card-icon">🏆</span>
+            <h2 class="info-card-title">神人榜</h2>
           </header>
 
           <!-- 加载 & 错误 -->
-          <div v-if="fengshenLoading" class="info-card-body">
-            <p class="info-card-status">正在获取封神榜数据...</p>
+          <div v-if="shenrenLoading" class="info-card-body">
+            <p class="info-card-status">正在获取神人榜数据...</p>
           </div>
-          <div v-else-if="fengshenError" class="info-card-body">
-            <p class="info-card-status error">{{ fengshenError }}</p>
+          <div v-else-if="shenrenError" class="info-card-body">
+            <p class="info-card-status error">{{ shenrenError }}</p>
           </div>
 
           <!-- 有数据：仅展示前若干条摘要，避免撑爆卡片 -->
-          <div v-else-if="fengshenList.length > 0" class="info-card-body fengshen-list">
+          <div v-else-if="shenrenList.length > 0" class="info-card-body shenren-list">
             <div
-              class="fengshen-item"
-              v-for="(item, index) in fengshenList.slice(0, 6)"
-              :key="item.uuid || item.uid || index"
+              class="shenren-item"
+              v-for="(item, index) in shenrenList.slice(0, 6)"
+              :key="item.id || index"
             >
-              <div class="fengshen-line">
-                <span class="fengshen-label">UUID</span>
-                <span class="fengshen-value" :title="item.uuid">{{ item.uuid || '-' }}</span>
+              <div class="shenren-line">
+                <span class="shenren-label">排名</span>
+                <span class="shenren-value rank">{{ index + 1 }}</span>
               </div>
-              <div class="fengshen-line">
-                <span class="fengshen-label">UID / GID</span>
-                <span class="fengshen-value">
-                  {{ item.uid || '-' }} / {{ item.gid || '-' }}
-                </span>
+              <div class="shenren-line">
+                <span class="shenren-label">玩家</span>
+                <span class="shenren-value name">{{ item.name || '-' }}</span>
               </div>
-              <div class="fengshen-line">
-                <span class="fengshen-label">QQ</span>
-                <span class="fengshen-value">{{ item.qq || '-' }}</span>
+              <div class="shenren-line">
+                <span class="shenren-label">经验</span>
+                <span class="shenren-value">{{ item.totalExp || 0 }}</span>
               </div>
-              <div class="fengshen-line">
-                <span class="fengshen-label">最后登录 IP</span>
-                <span class="fengshen-value">{{ item.last_ip || '-' }}</span>
+              <div class="shenren-line">
+                <span class="shenren-label">总时长</span>
+                <span class="shenren-value">{{ Math.floor((item.totalTime || 0) / 60) }}分钟</span>
               </div>
             </div>
-            <p v-if="fengshenList.length > 6" class="fengshen-tip">
-              仅展示前 {{ Math.min(fengshenList.length, 6) }} 条，如需完整封神榜可前往后台或专用面板查看。
+            <p v-if="shenrenList.length > 6" class="shenren-tip">
+              仅展示前 {{ Math.min(shenrenList.length, 6) }} 名，如需完整榜单可前往后台或专用面板查看。
             </p>
           </div>
 
           <!-- 无数据 -->
           <div v-else class="info-card-body">
-            <p class="info-card-status">当前暂无封神记录。</p>
+            <p class="info-card-status">当前暂无神人记录。</p>
           </div>
 
           <footer class="info-card-footer">
-            <button class="info-card-link" @click.stop="fetchFengshenList">
-              刷新封神榜
+            <button class="info-card-link" @click.stop="fetchShenrenList">
+              刷新神人榜
             </button>
           </footer>
         </article>
@@ -1538,12 +1536,12 @@ onMounted(() => {
   transform: translateY(-1px);
 }
 
-/* 封神榜卡片内行样式 */
-.fengshen-card {
+/* 神人榜卡片内行样式 */
+.shenren-card {
   border: 1px solid rgba(148, 163, 253, 0.16);
 }
 
-.fengshen-list {
+.shenren-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -1551,7 +1549,7 @@ onMounted(() => {
   overflow-y: auto;
 }
 
-.fengshen-item {
+.shenren-item {
   padding: 6px 8px;
   border-radius: 10px;
   background: var(--btn-secondary-bg);
@@ -1561,24 +1559,24 @@ onMounted(() => {
   transition: all var(--transition-fast);
 }
 
-.fengshen-item:hover {
+.shenren-item:hover {
   box-shadow: var(--shadow-md);
   transform: translateY(-1px);
 }
 
-.fengshen-line {
+.shenren-line {
   display: flex;
   justify-content: space-between;
   gap: 6px;
   font-size: 0.78rem;
 }
 
-.fengshen-label {
+.shenren-label {
   color: var(--text-muted);
   white-space: nowrap;
 }
 
-.fengshen-value {
+.shenren-value {
   flex: 1;
   text-align: right;
   overflow: hidden;
@@ -1586,7 +1584,17 @@ onMounted(() => {
   white-space: nowrap;
 }
 
-.fengshen-tip {
+.shenren-value.rank {
+  font-weight: bold;
+  color: #f6ad55;
+}
+
+.shenren-value.name {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.shenren-tip {
   margin: 4px 2px 0;
   font-size: 0.72rem;
   color: var(--text-muted);
@@ -1601,7 +1609,7 @@ onMounted(() => {
     padding: 14px;
   }
 
-  .fengshen-line {
+  .shenren-line {
     font-size: 0.76rem;
   }
 }

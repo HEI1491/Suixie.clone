@@ -53,6 +53,7 @@ export function createAuthService({ http, tokenStore, mailAuthCode }) {
       if (!oldPassword || !newPassword) {
         throw new ApiError('Missing password', { status: 400 });
       }
+
       const payload = await http.request('/user/changePwd', {
         method: 'GET',
         searchParams: { oldPassword, newPassword },
@@ -104,8 +105,8 @@ export function createAuthService({ http, tokenStore, mailAuthCode }) {
     },
 
     async signUser() {
-      const payload = await http.request('/user/sign', { method: 'GET' });
-      return { status: 200, message: payload.result || 'Sign successful' };
+      // 统一使用 /user/sign
+      return this.sign();
     },
 
     async signWithQQ(qq) {

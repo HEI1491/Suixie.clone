@@ -108,6 +108,10 @@ export default defineConfig(({ mode }) => {
       host: '0.0.0.0',
       port: 3000,
       proxy: useMock ? undefined : {
+        '/api/getList': {
+          target: 'http://127.0.0.1:3366',
+          changeOrigin: true,
+        },
         '/api': {
           target: proxyTarget,
           changeOrigin: true,

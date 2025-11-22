@@ -105,7 +105,7 @@ onMounted(async () => {
             <div class="sum-line"><span class="sum-label">绑定邮箱</span><span class="sum-value">{{ profile.email || '-' }}</span></div>
             <div class="sum-line"><span class="sum-label">QQ号</span><span class="sum-value">{{ profile.qq || '-' }}</span></div>
             <div class="sum-line"><span class="sum-label">GID</span><span class="sum-value">{{ profile.gid || '-' }}</span></div>
-            <div class="sum-line"><span class="sum-label">游戏等级</span><span class="sum-value">{{ profile.level || '-' }}</span></div>
+            <div class="sum-line"><span class="sum-label">账号等级</span><span class="sum-value">{{ profile.level || '-' }}</span></div>
             <div class="sum-line"><span class="sum-label">当前经验</span><span class="sum-value">{{ profile.currentExp }}</span></div>
             <div class="sum-line"><span class="sum-label">下一级所需经验</span><span class="sum-value">{{ profile.nextLevelExp }}</span></div>
             <div class="sum-line"><span class="sum-label">经验进度</span><span class="sum-value">{{ expPercent }}%</span></div>

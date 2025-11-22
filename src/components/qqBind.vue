@@ -192,4 +192,6 @@ onBeforeUnmount(() => {
 .register-container.no-border { box-shadow: none; border: none; border-radius: 0; max-width: 420px; margin: 100px auto; }
 .verification-actions { display: flex; justify-content: flex-end; }
 .completion-message { background-color: #f0f9ff; border-radius: 5px; padding: 16px; text-align: center; margin-bottom: 12px; }
+/* 修复按钮位置偏下问题 */
+.form-step { justify-content: flex-start; min-height: auto; }
 </style>

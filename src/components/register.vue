@@ -126,23 +126,13 @@ const nextStep = () => {
       return;
     }
   }
-  if (currentStep.value === 4 && showQqVerification.value) {
-    if (!validateQQ(formData.qq)) {
-      showMessage('请输入有效的QQ号');
-      return;
-    }
-    sendQqVerificationCode();
-    currentStep.value = 5;
-    return;
-  }
-  if (currentStep.value === 5) {
-    if (!formData.qqVerificationCode || !/^\d+$/.test(String(formData.qqVerificationCode))) {
-      showMessage('请输入QQ绑定码');
-      return;
-    }
+  // 临时关闭QQ绑定功能
+  if (currentStep.value === 4) {
+    // 跳过QQ输入和验证，直接到确认页面
     currentStep.value = 6;
     return;
   }
+
   if (currentStep.value === 6) {
     handleSubmit();
     return;
@@ -151,7 +141,8 @@ const nextStep = () => {
     animationClass.value = 'slide-out';
     setTimeout(() => {
       currentStep.value++;
-      if (currentStep.value === 5 && !showQqVerification.value) {
+      // 如果是步骤3(邮箱验证)完成后，直接跳过步骤4(QQ输入)和5(QQ验证)，去步骤6(确认)
+      if (currentStep.value === 4) {
         currentStep.value = 6;
       }
       animationClass.value = 'slide-in';
@@ -172,12 +163,9 @@ const prevStep = () => {
     currentStep.value = 6;
     return;
   }
-  if (currentStep.value === 6 && showQqVerification.value) {
-    currentStep.value = 5;
-    return;
-  }
-  if (currentStep.value === 6 && !showQqVerification.value) {
-    currentStep.value = 4;
+  if (currentStep.value === 6) {
+    // 从确认页返回，直接回步骤3(邮箱验证)
+    currentStep.value = 3;
     return;
   }
   if (currentStep.value === 5) {

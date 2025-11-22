@@ -163,11 +163,11 @@ export class ApiClient {
   }
 
   /**
-   * 获取封神榜列表
+   * 获取神人榜列表
    * @returns {Promise} 返回Promise对象
    */
-  getFengshenList(...args) {
-    return this.services.getFengshenList(...args);
+  getShenrenList(...args) {
+    return this.services.getShenrenList(...args);
   }
 
   getProfileByQQ(...args) {

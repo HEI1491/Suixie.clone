@@ -31,17 +31,20 @@ def get_db_connection():
         print(f"数据库连接失败: {e}")
         raise
 
-def fetch_top_50_longest_entries():
-    """从数据库查询所有记录，按玩家(profile)分组计算总时长，并返回总时长最长的前50名玩家"""
+def fetch_top_50_players():
+    """从数据库查询 PlayerProfile 表，按 totalExp 降序排列，返回前50名玩家"""
     conn = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        # 查询所有记录，注意替换为真实的表名 playerban
+        # 查询 PlayerProfile 表，按经验值降序排序
+        # 注意：表名和字段名在 PostgreSQL 中如果创建时加了引号（Exposed 默认行为），查询时也需要加引号
         query = """
-        SELECT *
-        FROM playerban; -- 查询所有记录
+        SELECT "id", "lastName", "totalExp", "totalTime", "lastTime"
+        FROM "PlayerProfile"
+        ORDER BY "totalExp" DESC
+        LIMIT 50;
         """
 
         cursor.execute(query)
@@ -51,69 +54,17 @@ def fetch_top_50_longest_entries():
         column_names = [desc[0] for desc in cursor.description]
 
         # 将结果转换为字典列表
-        all_records = []
+        final_result = []
         for row in rows:
             entry = dict(zip(column_names, row))
-            all_records.append(entry)
+            # 处理时间对象，转为字符串以便 JSON 序列化
+            if 'lastTime' in entry and isinstance(entry['lastTime'], datetime):
+                entry['lastTime'] = entry['lastTime'].strftime("%Y-%m-%d %H:%M:%S")
+            
+            final_result.append(entry)
 
         cursor.close()
-        conn.close() # 确保连接关闭
-
-        # --- 按玩家 (profile) 分组并计算总时长 ---
-        player_duration_map = defaultdict(float) # 使用 defaultdict 初始化为 0.0
-        # 如果需要存储玩家的其他信息（如最后一次记录），可以使用更复杂的字典结构
-        # 例如: player_info_map = defaultdict(lambda: {'total_duration': 0.0, 'last_record': None})
-
-        for record in all_records:
-            try:
-                profile_id = record['profile']
-                create_time = record['createTime']
-                end_time = record['endTime']
-
-                # 解析时间字符串 (处理可能的微秒格式差异)
-                if isinstance(create_time, str):
-                    try:
-                        create_time = datetime.strptime(create_time, "%Y-%m-%d %H:%M:%S.%f")
-                    except ValueError:
-                        create_time = datetime.strptime(create_time, "%Y-%m-%d %H:%M:%S")
-
-                if isinstance(end_time, str):
-                    try:
-                        end_time = datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S.%f")
-                    except ValueError:
-                        end_time = datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S")
-
-                # 计算单条记录的时长 (秒)
-                duration_seconds = (end_time - create_time).total_seconds()
-
-                # 累加到对应玩家的总时长
-                player_duration_map[profile_id] += duration_seconds
-
-            except (KeyError, ValueError, TypeError) as e:
-                print(f"警告：处理记录 {record} 时出错: {e}")
-                # 可以选择跳过有问题的记录
-
-        # --- 转换为列表并排序 ---
-        # 将字典 {profile_id: total_duration} 转换为列表 [(profile_id, total_duration)]
-        player_durations_list = list(player_duration_map.items())
-
-        # 按总时长降序排序
-        player_durations_list.sort(key=lambda x: x[1], reverse=True)
-
-        # --- 构造最终返回结果 ---
-        # 取前50名
-        top_50_players = player_durations_list[:50]
-
-        # 转换为包含所需信息的字典列表格式，方便JSON序列化
-        # 这里我们返回 profile ID 和总秒数
-        final_result = []
-        for profile_id, total_seconds in top_50_players:
-            final_result.append({
-                'profile': profile_id,
-                'total_duration_seconds': total_seconds
-                # 如果需要更多信息，可以从原始记录中提取并关联
-                # 例如，找到该玩家持续时间最长的一次记录，并附带其 reason 等信息
-            })
+        conn.close()
 
         return final_result
 
@@ -122,8 +73,6 @@ def fetch_top_50_longest_entries():
         if conn:
             conn.close()
         raise
-
-# ... (get_list 路由和其他部分保持不变) ...
 
 @app.route('/api/getList', methods=['GET'])
 def get_list():
@@ -143,7 +92,7 @@ def get_list():
 
     try:
         print("正在查询数据库...")
-        data = fetch_top_50_longest_entries()
+        data = fetch_top_50_players()
         # 更新缓存
         cache['data'] = data
         cache['timestamp'] = current_time

@@ -50,8 +50,9 @@
             <button
                 class="method-btn"
                 :class="{ active: loginMethod === 'qq' }"
-                @click="loginMethod = 'qq'">
-              QQ验证（等嘿开放）
+                @click="loginMethod = 'qq'"
+                disabled>
+              QQ验证（维护中）
             </button>
           </div>
           <div class="button-group">
