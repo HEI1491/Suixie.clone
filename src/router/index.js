@@ -1,4 +1,5 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
+import Court from '../components/Court.vue'
 import { API_DEFAULTS } from '../core/constants.js'
 
 const home = () => import('../components/home.vue')
@@ -9,6 +10,10 @@ const sign = () => import('../components/sign.vue')
 const bindCode = () => import('../components/bindCode.vue')
 const qqBind = () => import('../components/qqBind.vue')
 const support = () => import('../components/CustomerService.vue')
+// Court 页面改为静态导入，避免动态导入在重定向时的中止日志
+const court = Court
+const courtGate = () => import('../components/CourtGate.vue')
+const courtAppeal = () => import('../components/CourtAppeal.vue')
 const notFound = () => import('../components/NotFound.vue')
 const profile = () => import('../components/profile.vue')
 
@@ -22,12 +27,28 @@ const routes = [
     { path: '/qqBind', component: qqBind },
     { path: '/profile', component: profile, meta: { requiresAuth: true } },
     { path: '/support', component: support },
+    { path: '/court', redirect: '/court/gate' },
+    { path: '/court/gate', component: courtGate },
+    { path: '/court/appeal', component: courtAppeal, meta: { requiresAuth: true } },
+    { path: '/court/:role', component: court, props: true, beforeEnter: (to) => {
+        const seg = to.params.role
+        const map = { judge: '法官', plaintiff: '原告', defendant: '被告', audience: '观众' }
+        const role = map[seg] || seg
+        const has = !!localStorage.getItem(`COURT_SECRET_${role}`)
+        if (!has) return { path: '/court/gate', query: { role: seg } }
+      } },
     { path: '/:pathMatch(.*)*', component: notFound }
 ]
 
 const router = createRouter({
     history: createWebHashHistory('/'),
     routes
+})
+
+router.onError((err) => {
+    const msg = String(err && (err.message || err))
+    if (msg.includes('Failed to fetch dynamically imported module') || msg.includes('net::ERR_ABORTED')) return
+    console.error(err)
 })
 
 router.beforeEach((to, from, next) => {

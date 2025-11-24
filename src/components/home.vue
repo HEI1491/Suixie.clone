@@ -51,7 +51,8 @@ const features = ref([
   { id: 0, title: '每日签到', path: 'sign', icon: '📅' },
   { id: 1, title: '幽柠规则', path: 'bindCode', icon: '📜' },
   { id: 2, title: '找回密码', path: 'recover', icon: '🔑' },
-  { id: 3, title: '联系客服', path: 'support', icon: '🆘' }
+  { id: 3, title: '联系客服', path: 'support', icon: '🆘' },
+  { id: 4, title: '幽柠法庭', path: 'court', icon: '⚖️' }
   // { id: 4, title: '绑定QQ', path: 'qqBind', icon: '🔗' }
 ])
 
@@ -359,6 +360,7 @@ onMounted(() => {
       window.removeEventListener('storage', onStorage as any)
     })
   })
+
 </script>
 
 <template>
@@ -563,6 +565,7 @@ onMounted(() => {
             </button>
           </footer>
         </article>
+
       </section>
     </main>
     
@@ -796,7 +799,7 @@ onMounted(() => {
   margin: 0 auto;
   padding: 20px 0;
   height: calc(100vh - 120px); /* 计算内容区域高度，确保不超出视口 */
-  overflow-y: auto; /* 只在内容区域允许滚动 */
+  overflow-y: hidden; /* 取消外层滚动 */
   box-sizing: border-box;
 }
 
@@ -1540,6 +1543,26 @@ onMounted(() => {
 .shenren-card {
   border: 1px solid rgba(148, 163, 253, 0.16);
 }
+
+.court-sessions {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+.session-row {
+  display: grid;
+  grid-template-columns: 40px 80px 80px 80px auto;
+  align-items: center;
+  gap: 8px;
+  background: var(--btn-secondary-bg);
+  border-radius: 8px;
+  padding: 8px;
+}
+.session-status.open { color: #4CAF50; }
+.session-status.connecting { color: #357ABD; }
+.session-status.closed { color: #999; }
+.session-status.error { color: #f44336; }
 
 .shenren-list {
   display: flex;

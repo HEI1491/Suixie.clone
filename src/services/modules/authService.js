@@ -39,13 +39,14 @@ export function createAuthService({ http, tokenStore, mailAuthCode }) {
         },
       });
 
-      if (payload.token) {
-        tokenStore?.write(payload.token);
+      const token = (payload && payload.data && payload.data.token) || payload.token || '';
+      if (token) {
+        tokenStore?.write(token);
       }
 
       return {
         status: 200,
-        token: payload.token,
+        token,
       };
     },
 
@@ -75,8 +76,9 @@ export function createAuthService({ http, tokenStore, mailAuthCode }) {
         },
       });
 
-      if (payload.token) {
-        tokenStore?.write(payload.token);
+      {
+        const token = (payload && payload.data && payload.data.token) || payload.token || '';
+        if (token) tokenStore?.write(token);
       }
 
       return {
@@ -152,8 +154,9 @@ export function createAuthService({ http, tokenStore, mailAuthCode }) {
         method: 'GET',
         searchParams: { qq, code },
       });
-      if (payload.token) tokenStore?.write(payload.token);
-      return { status: 200, token: payload.token };
+      const token = (payload && payload.data && payload.data.token) || payload.token || '';
+      if (token) tokenStore?.write(token);
+      return { status: 200, token };
     },
 
     async getQQBindStatus() {

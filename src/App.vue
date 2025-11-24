@@ -19,6 +19,8 @@ export default {
 <template>
   <!-- 路由视图容器 - 根据当前路由显示对应组件 -->
   <RouterView id="view"></RouterView>
+  <button class="back-home-btn" v-if="$route.path !== '/'" @click="$router.push('/')">返回主页</button>
+  <div class="disclaimer" v-if="$route.path.startsWith('/court')">《娱乐项目 | 请勿模仿》</div>
   <!-- 调试用组件（当前已注释） -->
   <!--<div><debug></debug></div>-->
   <footer class="site-footer">
@@ -49,4 +51,7 @@ export default {
  .divider { color: var(--text-muted); }
  .beian-img { display: inline-block; vertical-align: middle; }
  .icp-icon { display: inline-flex; align-items: center; justify-content: center; color: #4A90E2; }
+ .back-home-btn { position: fixed; top: 12px; left: 12px; z-index: 1100; padding: 8px 12px; border: none; border-radius: 8px; background: var(--card-bg); color: var(--text-primary); box-shadow: var(--shadow-md); cursor: pointer; }
+ .back-home-btn:hover { box-shadow: var(--shadow-lg); }
+  .disclaimer { position: fixed; bottom: 44px; left: 0; width: 100%; text-align: center; padding: 6px 10px; font-size: 12px; color: var(--text-muted); background: var(--btn-secondary-bg); z-index: 900; }
 </style>

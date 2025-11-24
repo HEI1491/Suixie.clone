@@ -25,6 +25,22 @@ function normalizeBaseUrl(baseUrl) {
  * @returns {string} 完整的请求URL
  */
 function buildUrl(baseUrl, path, searchParams) {
+  if (/^https?:\/\//i.test(path)) {
+    let full = path;
+    if (searchParams && Object.keys(searchParams).length > 0) {
+      const params = new URLSearchParams();
+      Object.entries(searchParams).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          params.append(key, value);
+        }
+      });
+      const queryString = params.toString();
+      if (queryString) {
+        full = `${full}${full.includes('?') ? '&' : '?'}${queryString}`;
+      }
+    }
+    return full;
+  }
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   let full = '';
   if (!baseUrl) {

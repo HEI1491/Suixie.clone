@@ -24,82 +24,45 @@ cache = {
 
 def get_db_connection():
     """建立并返回一个数据库连接"""
-    try:
-        conn = psycopg2.connect(**DB_CONFIG)
-        return conn
-    except Exception as e:
-        print(f"数据库连接失败: {e}")
-        raise
+    conn = psycopg2.connect(**DB_CONFIG)
+    return conn
 
 def fetch_top_50_players():
     """从数据库查询 PlayerProfile 表，按 totalExp 降序排列，返回前50名玩家"""
-    conn = None
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-
-        # 查询 PlayerProfile 表，按经验值降序排序
-        # 注意：表名和字段名在 PostgreSQL 中如果创建时加了引号（Exposed 默认行为），查询时也需要加引号
-        query = """
-        SELECT "id", "lastName", "totalExp", "totalTime", "lastTime"
-        FROM "PlayerProfile"
-        ORDER BY "totalExp" DESC
-        LIMIT 50;
-        """
-
-        cursor.execute(query)
-        rows = cursor.fetchall()
-
-        # 获取列名
-        column_names = [desc[0] for desc in cursor.description]
-
-        # 将结果转换为字典列表
-        final_result = []
-        for row in rows:
-            entry = dict(zip(column_names, row))
-            # 处理时间对象，转为字符串以便 JSON 序列化
-            if 'lastTime' in entry and isinstance(entry['lastTime'], datetime):
-                entry['lastTime'] = entry['lastTime'].strftime("%Y-%m-%d %H:%M:%S")
-            
-            final_result.append(entry)
-
-        cursor.close()
-        conn.close()
-
-        return final_result
-
-    except Exception as e:
-        print(f"数据库查询或处理失败: {e}")
-        if conn:
-            conn.close()
-        raise
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    query = """
+    SELECT "id", "lastName", "totalExp", "totalTime", "lastTime"
+    FROM "PlayerProfile"
+    ORDER BY "totalExp" DESC
+    LIMIT 50;
+    """
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    column_names = [desc[0] for desc in cursor.description]
+    final_result = []
+    for row in rows:
+        entry = dict(zip(column_names, row))
+        if 'lastTime' in entry and isinstance(entry['lastTime'], datetime):
+            entry['lastTime'] = entry['lastTime'].strftime("%Y-%m-%d %H:%M:%S")
+        final_result.append(entry)
+    cursor.close()
+    conn.close()
+    return final_result
 
 @app.route('/api/getList', methods=['GET'])
 def get_list():
     """API 路由：获取排序后的列表"""
-
-    # 检查是否允许访问
     client_ip = request.environ.get('REMOTE_ADDR')
     if client_ip != '127.0.0.1':
         return jsonify({'error': 'Access denied'}), 403
-
     current_time = time.time()
-
-    # 检查缓存是否有效
     if cache['data'] is not None and (current_time - cache['timestamp']) < CACHE_DURATION:
-        print("返回缓存数据")
         return jsonify(cache['data'])
-
-    try:
-        print("正在查询数据库...")
-        data = fetch_top_50_players()
-        # 更新缓存
-        cache['data'] = data
-        cache['timestamp'] = current_time
-        print("数据库查询完成并已缓存")
-        return jsonify(data)
-    except Exception as e:
-        return jsonify({'error': f'Failed to fetch data: {str(e)}'}), 500
+    data = fetch_top_50_players()
+    cache['data'] = data
+    cache['timestamp'] = current_time
+    return jsonify(data)
 
 
 if __name__ == '__main__':
