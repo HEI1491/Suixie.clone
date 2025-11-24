@@ -50,8 +50,9 @@
             <button
                 class="method-btn"
                 :class="{ active: loginMethod === 'qq' }"
-                @click="loginMethod = 'qq'">
-              QQ验证（等柠檬开放）
+                @click="loginMethod = 'qq'"
+                disabled>
+              QQ验证（维护中）
             </button>
           </div>
           <div class="button-group">
@@ -194,7 +195,7 @@
               </p>
               <button
                   class="btn-resend"
-                  @click="sendVerificationCode"
+                  @click="loginMethod === 'qq' ? sendQQCode() : sendVerificationCode()"
                   :disabled="countdown > 0">
                 {{ countdown > 0 ? `重新发送(${countdown}s)` : '重新发送' }}
               </button>
@@ -203,7 +204,7 @@
 
           <div class="button-group">
             <button class="btn btn-prev" @click="prevStep">上一步</button>
-            <button class="btn btn-next" @click="nextStep">
+            <button class="btn btn-next" @click="nextStep" :disabled="(loginMethod !== 'account') && !loginForm.verificationCode">
               下一步
             </button>
           </div>
@@ -225,13 +226,16 @@
 </template>
 
 <script setup>
-import { ref, reactive, onBeforeUnmount } from 'vue';
+import { ref, reactive, onBeforeUnmount, onMounted } from 'vue';
 import { useTheme } from '../composables/useTheme.js';
+import { useRouter, useRoute } from 'vue-router';
 import { useApi } from '@/plugins/api.js';
 import { API_DEFAULTS } from '@/core/constants.js';
 import { useSnackbar } from '../composables/useSnackbar.js';
 
 const { themeToggleLabel, themeIcon, cycleThemePreference } = useTheme();
+const router = useRouter();
+const route = useRoute();
 const api = useApi();
 const { showMessage } = useSnackbar();
 
@@ -358,13 +362,18 @@ const handleLogin = async () => {
     if (loginMethod.value === 'account') {
       const result = await api.login(loginForm.username, loginForm.password);
       if (result.status === 200) {
+        const token = api.readToken?.() || localStorage.getItem(API_DEFAULTS.tokenStorageKey);
+        if (!token) {
+          showMessage('未获取到登录凭证，请重试', { type: 'error' });
+          return;
+        }
         try { localStorage.setItem(API_DEFAULTS.displayNameStorageKey, loginForm.username); } catch {}
         try { localStorage.setItem(API_DEFAULTS.loginTimestampStorageKey, String(Date.now())); } catch {}
         try {
           const prof1 = await api.getUserProfile();
           sumExpBefore.value = prof1?.data?.currentExp ?? null;
         } catch {}
-        try {
+        try { 
           await api.sign();
         } catch {}
         try {
@@ -384,6 +393,10 @@ const handleLogin = async () => {
           setTimeout(() => {
             animationClass.value = '';
           }, 300);
+          try {
+            const r = String((route.query && route.query.redirect) || '');
+            if (r) router.push(r);
+          } catch {}
         }, 300);
       }
     } else {
@@ -391,6 +404,11 @@ const handleLogin = async () => {
         try {
           const result = await api.qqLogin(loginForm.qq, loginForm.verificationCode);
           if (result.status === 200) {
+            const token = api.readToken?.() || localStorage.getItem(API_DEFAULTS.tokenStorageKey);
+            if (!token) {
+              showMessage('未获取到登录凭证，请重试', { type: 'error' });
+              return;
+            }
             try { localStorage.setItem(API_DEFAULTS.displayNameStorageKey, loginForm.qq); } catch {}
             try { localStorage.setItem(API_DEFAULTS.loginTimestampStorageKey, String(Date.now())); } catch {}
             animationClass.value = 'slide-out';
@@ -398,6 +416,10 @@ const handleLogin = async () => {
               currentStep.value = 5;
               animationClass.value = 'slide-in';
               setTimeout(() => { animationClass.value = ''; }, 300);
+              try {
+                const r = String((route.query && route.query.redirect) || '');
+                if (r) router.push(r);
+              } catch {}
             }, 300);
           }
         } catch (err) {
@@ -486,6 +508,16 @@ onBeforeUnmount(() => {
     clearInterval(timer);
   }
 });
+
+onMounted(() => {
+  try {
+    const preMsg = localStorage.getItem(API_DEFAULTS.preLoginMessageKey);
+    if (preMsg) {
+      showMessage(preMsg, { type: 'warning', duration: 3000 });
+      localStorage.removeItem(API_DEFAULTS.preLoginMessageKey);
+    }
+  } catch {}
+});
 </script>
 
 <style scoped src="../assets/NewLogin.css"></style>
@@ -495,10 +527,3 @@ onBeforeUnmount(() => {
 .sum-label { color: var(--text-muted); }
 .sum-value { color: var(--text-primary); font-weight: 600; }
 </style>
-try {
-  const preMsg = localStorage.getItem(API_DEFAULTS.preLoginMessageKey);
-  if (preMsg) {
-    showMessage(preMsg, { type: 'warning', duration: 3000 });
-    localStorage.removeItem(API_DEFAULTS.preLoginMessageKey);
-  }
-} catch {}

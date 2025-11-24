@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 import { useTheme } from '../composables/useTheme.js';
 import { useApi } from '@/plugins/api.js';
 import { useSnackbar } from '../composables/useSnackbar.js';
+import { API_DEFAULTS } from '@/core/constants.js';
 
 // 主题、路由、接口、消息等全局依赖
 const { themeToggleLabel, themeIcon, cycleThemePreference } = useTheme();
@@ -46,6 +47,8 @@ const validateEmail = (email) => {
   return emailRegex.test(email);
 };
 
+const validateQQ = (v) => /^\d{5,}$/.test(String(v || '').trim());
+
 // 发送邮箱验证码并启动 60s 倒计时
 const sendVerificationCode = async () => {
   if (countdown.value > 0) return;
@@ -68,24 +71,22 @@ const sendVerificationCode = async () => {
     }, 1000);
     showMessage('\u9a8c\u8bc1\u7801\u5df2\u53d1\u9001\uff0c\u8bf7\u67e5\u6536\u90ae\u7bb1', { type: 'success' });
   } catch (error) {
-    console.error('\u53d1\u9001\u9a8c\u8bc1\u7801\u5931\u8d25:', error);
     showMessage(error.reason || error.message || '\u53d1\u9001\u9a8c\u8bc1\u7801\u5931\u8d25', { type: 'error' });
   } finally {
     isLoading.value = false;
   }
 };
 
-// 发送 QQ 邮箱验证码（QQ -> qq.com 邮箱）
+// 发送 QQ 绑定码
 const sendQqVerificationCode = async () => {
   if (qqCountdown.value > 0) return;
-  if (!formData.qq) {
+  if (!validateQQ(formData.qq)) {
     showMessage('\u8bf7\u5148\u586b\u5199QQ\u53f7', { type: 'warning' });
     return;
   }
-  const qqEmail = `${formData.qq}@qq.com`;
   isLoading.value = true;
   try {
-    await api.sendCode(qqEmail);
+    await api.sendQQBindCode(formData.qq.trim());
     qqCountdown.value = 60;
     if (qqTimer) {
       clearInterval(qqTimer);
@@ -96,10 +97,9 @@ const sendQqVerificationCode = async () => {
         clearInterval(qqTimer);
       }
     }, 1000);
-    showMessage('\u9a8c\u8bc1\u7801\u5df2\u53d1\u9001\u81f3QQ\u90ae\u7bb1\uff0c\u8bf7\u67e5\u6536', { type: 'success' });
+    showMessage('\u7ed1\u5b9a\u7801\u5df2\u53d1\u9001\u81f3QQ\u90ae\u7bb1\uff0c\u8bf7\u67e5\u6536', { type: 'success' });
   } catch (error) {
-    console.error('\u53d1\u9001QQ\u9a8c\u8bc1\u7801\u5931\u8d25:', error);
-    showMessage(error.reason || error.message || '\u53d1\u9001QQ\u9a8c\u8bc1\u7801\u5931\u8d25', { type: 'error' });
+    showMessage(error.reason || error.message || '\u53d1\u9001QQ\u7ed1\u5b9a\u7801\u5931\u8d25', { type: 'error' });
   } finally {
     isLoading.value = false;
   }
@@ -107,6 +107,12 @@ const sendQqVerificationCode = async () => {
 
 // 控制下一步转场及阶段性逻辑
 const nextStep = () => {
+  if (currentStep.value === 0) {
+    if (!formData.account) {
+      showMessage('请输入账号')
+      return
+    }
+  }
   if (currentStep.value === 2) {
     if (!validateEmail(formData.mail)) {
       showMessage('邮箱格式不正确');
@@ -114,14 +120,19 @@ const nextStep = () => {
     }
     sendVerificationCode();
   }
-  if (currentStep.value === 4 && showQqVerification.value) {
-    currentStep.value = 5;
-    return;
+  if (currentStep.value === 3) {
+    if (!formData.verificationCode || !/^\d+$/.test(String(formData.verificationCode))) {
+      showMessage('请输入邮箱验证码');
+      return;
+    }
   }
-  if (currentStep.value === 5) {
+  // 临时关闭QQ绑定功能
+  if (currentStep.value === 4) {
+    // 跳过QQ输入和验证，直接到确认页面
     currentStep.value = 6;
     return;
   }
+
   if (currentStep.value === 6) {
     handleSubmit();
     return;
@@ -130,7 +141,8 @@ const nextStep = () => {
     animationClass.value = 'slide-out';
     setTimeout(() => {
       currentStep.value++;
-      if (currentStep.value === 5 && !showQqVerification.value) {
+      // 如果是步骤3(邮箱验证)完成后，直接跳过步骤4(QQ输入)和5(QQ验证)，去步骤6(确认)
+      if (currentStep.value === 4) {
         currentStep.value = 6;
       }
       animationClass.value = 'slide-in';
@@ -151,12 +163,9 @@ const prevStep = () => {
     currentStep.value = 6;
     return;
   }
-  if (currentStep.value === 6 && showQqVerification.value) {
-    currentStep.value = 5;
-    return;
-  }
-  if (currentStep.value === 6 && !showQqVerification.value) {
-    currentStep.value = 4;
+  if (currentStep.value === 6) {
+    // 从确认页返回，直接回步骤3(邮箱验证)
+    currentStep.value = 3;
     return;
   }
   if (currentStep.value === 5) {
@@ -186,10 +195,35 @@ const handleSubmit = async () => {
       formData.password,
       formData.verificationCode
     );
+    try { localStorage.setItem(API_DEFAULTS.loginTimestampStorageKey, String(Date.now())); } catch {}
+    try { localStorage.setItem(API_DEFAULTS.displayNameStorageKey, formData.account); } catch {}
+    try {
+      if (validateQQ(formData.qq) && formData.qqVerificationCode?.trim()) {
+        try {
+          const r = await api.bindQQ(String(formData.qq).trim(), formData.qqVerificationCode.trim());
+          const bound = r?.qq ? String(r.qq) : '';
+          if (bound && bound !== String(formData.qq).trim()) {
+            showMessage('\u7ed1\u5b9a\u6210\u529f\uff0c\u4f46QQ\u53f7\u4e0e\u8f93\u5165\u4e0d\u4e00\u81f4', { type: 'warning' });
+          } else {
+            showMessage('\u7ed1\u5b9aQQ\u6210\u529f', { type: 'success' });
+          }
+        } catch {
+          const res = await api.verifyQQBind(formData.qqVerificationCode.trim());
+          const bound = res?.qq ? String(res.qq) : '';
+          if (bound && bound !== String(formData.qq).trim()) {
+            showMessage('\u7ed1\u5b9a\u6210\u529f\uff0c\u4f46QQ\u53f7\u4e0e\u8f93\u5165\u4e0d\u4e00\u81f4', { type: 'warning' });
+          } else {
+            showMessage('\u7ed1\u5b9aQQ\u6210\u529f', { type: 'success' });
+          }
+        }
+      }
+    } catch (e) {
+      const reason = e?.reason || e?.message || '';
+      showMessage(reason || '\u7ed1\u5b9aQQ\u5931\u8d25', { type: 'error' });
+    }
     showMessage('\u6ce8\u518c\u6210\u529f！', { type: 'success' });
     currentStep.value = 7;
   } catch (error) {
-    console.error('\u6ce8\u518c\u5931\u8d25:', error);
     const reason = error.reason || error.message || '\u6ce8\u518c\u5931\u8d25';
     showMessage(`\u6ce8\u518c\u5931\u8d25: ${reason}`, { type: 'error' });
   } finally {
@@ -205,6 +239,10 @@ const onVerificationCodeInput = (e) => {
 // 保持 QQ 验证码输入为纯数字
 const onQqVerificationCodeInput = (e) => {
   formData.qqVerificationCode = e.target.value.replace(/\D/g, '');
+};
+
+const onQqInput = (e) => {
+  formData.qq = e.target.value.replace(/\D/g, '');
 };
 
 // 切换密码显示状态
@@ -311,7 +349,7 @@ onBeforeUnmount(() => {
       <!-- 步骤4: 验证码 -->
       <div v-show="currentStep === 3" :class="['form-step', animationClass]">
         <h2>邮箱验证</h2>
-        <div class="input-group">
+      <div class="input-group">
           <label for="verificationCode">验证码 *</label>
           <input 
             type="text" 
@@ -333,7 +371,7 @@ onBeforeUnmount(() => {
         </div>
         <div class="button-group">
           <button class="btn btn-prev" @click="prevStep">上一步</button>
-          <button class="btn btn-next" @click="nextStep">
+          <button class="btn btn-next" @click="nextStep" :disabled="!formData.verificationCode">
             下一步
           </button>
         </div>
@@ -349,13 +387,12 @@ onBeforeUnmount(() => {
             id="qq" 
             v-model="formData.qq" 
             placeholder="请输入QQ号"
-            disabled
-            @focus="showQqDisabledMessage"
+            @input="onQqInput"
           />
         </div>
         <div class="button-group">
           <button class="btn btn-prev" @click="prevStep">上一步</button>
-          <button class="btn btn-next" @click="nextStep">
+          <button class="btn btn-next" @click="nextStep" :disabled="showQqVerification && !validateQQ(formData.qq)">
             下一步
           </button>
         </div>
@@ -375,7 +412,7 @@ onBeforeUnmount(() => {
             @input="onQqVerificationCodeInput"
           />
           <div class="verification-actions">
-            <p class="verification-hint">验证码已发送至您的QQ邮箱({{ formData.qq }}@qq.com)，请查收</p>
+            <p class="verification-hint">绑定码已发送至您的QQ邮箱({{ formData.qq }}@qq.com)，请查收</p>
             <button 
               class="btn-resend" 
               @click="sendQqVerificationCode" 
@@ -386,7 +423,7 @@ onBeforeUnmount(() => {
         </div>
         <div class="button-group">
           <button class="btn btn-prev" @click="prevStep">上一步</button>
-          <button class="btn btn-next" @click="nextStep">
+          <button class="btn btn-next" @click="nextStep" :disabled="!formData.qqVerificationCode">
             下一步
           </button>
         </div>

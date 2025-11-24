@@ -1,27 +1,34 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { createApiClient } from '@/services/apiClient.js'
 import { useTheme } from '@/composables/useTheme.js'
+import { useSnackbar } from '@/composables/useSnackbar.js'
 
-const qq = ref('')
-const result = ref('')
+const oldPassword = ref('')
+const newPassword = ref('')
 const loading = ref(false)
 const { themeToggleLabel, themeIcon, cycleThemePreference } = useTheme()
+const { showMessage } = useSnackbar()
 
-const fetchProfile = async () => {
-  if (!qq.value) {
-    result.value = '请输入QQ号'
+const changePassword = async () => {
+  if (!oldPassword.value || !newPassword.value) {
+    showMessage('请输入旧密码和新密码', { type: 'warning' })
+    return
+  }
+  if (newPassword.value.length < 8) {
+    showMessage('新密码长度至少8位', { type: 'warning' })
     return
   }
   loading.value = true
-  result.value = ''
   try {
     const api = createApiClient()
-    const payload = await api.request('/getProfileInfo', { method: 'GET', searchParams: { qq: qq.value } })
-    result.value = payload.result || '查询成功'
+    await api.services.changePassword(oldPassword.value, newPassword.value)
+    showMessage('修改密码成功', { type: 'success' })
+    oldPassword.value = ''
+    newPassword.value = ''
   } catch (err) {
-    result.value = err?.reason || err?.message || '查询失败'
+    const reason = err?.reason || err?.message || '修改密码失败'
+    showMessage(reason, { type: 'error' })
   } finally {
     loading.value = false
   }
@@ -37,14 +44,17 @@ const fetchProfile = async () => {
     >
       {{ themeIcon }}
     </button>
-    <h2>找回密码</h2>
-    <p class="desc">通过QQ查询账号资料以辅助找回。</p>
+    <h2>修改密码</h2>
+    <p class="desc">输入旧密码以修改新密码。</p>
     <div class="input-group">
-      <label for="qq">QQ号</label>
-      <input id="qq" v-model="qq" type="text" placeholder="请输入QQ号" />
+      <label for="oldPassword">旧密码</label>
+      <input id="oldPassword" v-model="oldPassword" type="password" placeholder="请输入旧密码" />
     </div>
-    <button class="action" @click="fetchProfile" :disabled="loading">{{ loading ? '查询中...' : '查询资料' }}</button>
-    <pre v-if="result" class="result">{{ result }}</pre>
+    <div class="input-group">
+      <label for="newPassword">新密码</label>
+      <input id="newPassword" v-model="newPassword" type="password" placeholder="请输入新密码(至少8位)" />
+    </div>
+    <button class="action" @click="changePassword" :disabled="loading">{{ loading ? '修改中...' : '确认修改' }}</button>
     <router-link class="text-link btn-home" to="/"><span class="btn-icon">←</span> 返回首页</router-link>
   </div>
   
@@ -95,4 +105,3 @@ const fetchProfile = async () => {
 
 /* back button uses global .text-link .btn-home .btn-icon */
 </style>
-const router = useRouter()

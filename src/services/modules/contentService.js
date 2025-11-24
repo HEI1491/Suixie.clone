@@ -21,22 +21,24 @@ export function createContentService({ http }) {
       };
     },
 
-    async getFengshenList() {
-      const payload = await http.request('/fsb', {
-        method: 'GET',
-      });
-
-      const list = Array.isArray(payload?.data) ? payload.data : [];
-      return {
-        status: 200,
-        list: list.map((item) => ({
-          uuid: item?.uuid ?? '',
-          uid: item?.uid ?? '',
-          gid: item?.gid ?? '',
-          qq: item?.qq ?? '',
-          last_ip: item?.last_ip ?? '',
-        })),
-      };
+    async getShenrenList() {
+      try {
+        const payload = await http.request('/api/getList', { method: 'GET' });
+        const list = Array.isArray(payload) ? payload : (Array.isArray(payload?.data) ? payload.data : []);
+        
+        return {
+          status: 200,
+          list: list.map((item) => ({
+            id: item?.id ?? '',
+            name: item?.lastName ?? '未知',
+            totalExp: item?.totalExp ?? 0,
+            totalTime: item?.totalTime ?? 0,
+            lastTime: item?.lastTime ?? '',
+          })),
+        };
+      } catch (_) {
+        return { status: 200, list: [] };
+      }
     },
 
     async getProfileByQQ(qq) {
@@ -81,6 +83,25 @@ export function createContentService({ http }) {
           registerTime: regTime,
         },
       };
+    },
+
+    async getServerStatus() {
+      // Assuming the backend is configured to handle /status directly or via /api/status
+      // The backend code javalin/serverStatus.kts defines get("status")
+      // If httpClient adds /api prefix, it becomes /api/status.
+      // If the backend is mounted at root, it might be just /status.
+      // Let's try without leading slash to let httpClient handle it, or check if it should be 'status'
+      const payload = await http.request('status', { method: 'GET' });
+      return { status: 200, info: String(payload?.info || '') };
+    },
+
+    async broadcast(pwd, msg) {
+      if (!pwd || !msg) throw new ApiError('Missing parameters', { status: 400 });
+      const payload = await http.request('/broadcast', {
+        method: 'GET',
+        searchParams: { pwd, msg },
+      });
+      return { status: 200 };
     },
 
     async getUserProfile() {

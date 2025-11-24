@@ -7,8 +7,10 @@ const login = () => import('../components/NewLogin.vue')
 const recover = () => import('../components/recover.vue')
 const sign = () => import('../components/sign.vue')
 const bindCode = () => import('../components/bindCode.vue')
+const qqBind = () => import('../components/qqBind.vue')
 const support = () => import('../components/CustomerService.vue')
 const notFound = () => import('../components/NotFound.vue')
+const profile = () => import('../components/profile.vue')
 
 const routes = [
     { path: '/', component: home },
@@ -17,6 +19,8 @@ const routes = [
     { path: '/recover', component: recover, meta: { requiresAuth: true } },
     { path: '/sign', component: sign, meta: { requiresAuth: true } },
     { path: '/bindCode', component: bindCode },
+    { path: '/qqBind', component: qqBind },
+    { path: '/profile', component: profile, meta: { requiresAuth: true } },
     { path: '/support', component: support },
     { path: '/:pathMatch(.*)*', component: notFound }
 ]

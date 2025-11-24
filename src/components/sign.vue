@@ -44,16 +44,24 @@ onMounted(() => {
 
 async function handleSign() {
   try {
+    const now = new Date()
+    if (lastSignDate.value && now.getFullYear() === lastSignDate.value.getFullYear() && now.getMonth() === lastSignDate.value.getMonth() && now.getDate() === lastSignDate.value.getDate()) {
+      showMessageWithDelay('你已签过啦', 'error', false)
+      return
+    }
     const api = createApiClient()
     await prefetchProfile()
     qqError.value = ''
     if (isLoggedIn.value && !useQQFlow.value) {
       try {
         await api.signUser()
+        await new Promise(r => setTimeout(r, 600))
         await tryLoadProfile()
         if (signGain.value == null && beforeExp.value != null && profile.value?.currentExp != null) {
           signGain.value = Math.max(0, profile.value.currentExp - (beforeExp.value as number))
         }
+        lastSignDate.value = new Date()
+        localStorage.setItem('lastSignDate', (lastSignDate.value as Date).toISOString())
         showMessageWithDelay('签到成功', 'success')
         return
       } catch (e: any) {
@@ -74,16 +82,23 @@ async function handleSign() {
       }
     }
     if (!qq.value) {
+      const auto = resolveQQ()
+      if (auto) qq.value = auto
+    }
+    if (!qq.value) {
       qqError.value = '请输入QQ号'
       showMessage.value = false
       signStatus.value = null
       return
     }
     await api.signWithQQ(qq.value)
+    await new Promise(r => setTimeout(r, 600))
     await tryLoadProfile()
     if (signGain.value == null && beforeExp.value != null && profile.value?.currentExp != null) {
       signGain.value = Math.max(0, profile.value.currentExp - (beforeExp.value as number))
     }
+    lastSignDate.value = new Date()
+    localStorage.setItem('lastSignDate', (lastSignDate.value as Date).toISOString())
     showMessageWithDelay('签到成功', 'success')
   } catch (err: any) {
     const reason = err?.reason || err?.message || '签到失败'
@@ -123,15 +138,16 @@ function showMessageWithDelay(msg: string, status: 'success' | 'error', redirect
 async function tryLoadProfile() {
   try {
     const api = createApiClient()
-    let q = ''
-    if (useQQFlow.value && qq.value) q = qq.value.trim()
-    else {
-      const name = localStorage.getItem(API_DEFAULTS.displayNameStorageKey) || ''
-      if (/^\d{5,}$/.test(name)) q = name
+    if (useQQFlow.value && qq.value?.trim()) {
+      const res = await api.getProfileByQQ(qq.value.trim())
+      profile.value = res?.data || null
+    } else {
+      const res = await api.getUserProfile()
+      profile.value = res?.data || null
     }
-    if (!q) return
-    const res = await api.getProfileByQQ(q)
-    profile.value = res?.data || null
+    if (!qq.value && profile.value && /^\d{5,}$/.test(String(profile.value.qq || ''))) {
+      qq.value = String(profile.value.qq)
+    }
     if (profile.value && profile.value.nextLevelExp) {
       expPercent.value = Math.min(100, Math.round((profile.value.currentExp * 100) / (profile.value.nextLevelExp || 1)))
     }
@@ -141,11 +157,18 @@ async function tryLoadProfile() {
 async function prefetchProfile() {
   try {
     const api = createApiClient()
-    const q = resolveQQ()
-    if (!q) return
-    const res = await api.getProfileByQQ(q)
-    const data = res?.data
+    let data = null
+    if (useQQFlow.value && qq.value?.trim()) {
+      const res = await api.getProfileByQQ(qq.value.trim())
+      data = res?.data
+    } else {
+      const res = await api.getUserProfile()
+      data = res?.data
+    }
     beforeExp.value = (data && typeof data.currentExp === 'number') ? data.currentExp : null
+    if (!qq.value && data && /^\d{5,}$/.test(String(data.qq || ''))) {
+      qq.value = String(data.qq)
+    }
   } catch {}
 }
 
@@ -339,6 +362,4 @@ function resolveQQ(): string {
 .sum-label { color: var(--text-muted); }
 .sum-value { color: var(--text-primary); font-weight: 600; }
 </style>
-
-/* back button uses global .text-link .btn-home .btn-icon */
 

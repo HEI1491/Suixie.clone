@@ -101,7 +101,6 @@ const navigateTo = (path: string) => {
   showSubmenu.value = false
 }
 </script>
-</script>
 
 <template>
   <div 

@@ -1,7 +1,7 @@
 import { ApiError } from '@/core/errors.js';
 import { validators } from '../validators.js';
 
-export function createAuthService({ http, tokenStore }) {
+export function createAuthService({ http, tokenStore, mailAuthCode }) {
   if (!http) {
     throw new Error('createAuthService requires an http client instance');
   }
@@ -11,7 +11,7 @@ export function createAuthService({ http, tokenStore }) {
       validators.email(mail);
       const payload = await http.request('/genMailCode', {
         method: 'GET',
-        searchParams: { mail },
+        searchParams: { mail, authCode: mailAuthCode || undefined },
       });
 
       if (typeof payload.code === 'undefined') {
@@ -47,6 +47,18 @@ export function createAuthService({ http, tokenStore }) {
         status: 200,
         token: payload.token,
       };
+    },
+
+    async changePassword(oldPassword, newPassword) {
+      if (!oldPassword || !newPassword) {
+        throw new ApiError('Missing password', { status: 400 });
+      }
+
+      const payload = await http.request('/user/changePwd', {
+        method: 'GET',
+        searchParams: { oldPassword, newPassword },
+      });
+      return { status: 200 };
     },
 
     async register(account, password, code) {
@@ -93,8 +105,8 @@ export function createAuthService({ http, tokenStore }) {
     },
 
     async signUser() {
-      const payload = await http.request('/user/sign', { method: 'GET' });
-      return { status: 200, message: payload.result || 'Sign successful' };
+      // 统一使用 /user/sign
+      return this.sign();
     },
 
     async signWithQQ(qq) {
@@ -142,6 +154,29 @@ export function createAuthService({ http, tokenStore }) {
       });
       if (payload.token) tokenStore?.write(payload.token);
       return { status: 200, token: payload.token };
+    },
+
+    async getQQBindStatus() {
+      const payload = await http.request('/user/bindStatus', {
+        method: 'GET',
+        searchParams: { type: 'qq' },
+      });
+      return { status: 200, bound: !!payload.bound, qq: payload.qq || '' };
+    },
+
+    async bindQQ(qq, code) {
+      if (!qq) throw new ApiError('Missing qq', { status: 400 });
+      if (!code) throw new ApiError('Missing code', { status: 400 });
+      const payload = await http.request('/user/bindQQ', {
+        method: 'POST',
+        body: { qq, code },
+      });
+      return { status: 200, qq: payload.qq };
+    },
+
+    async unbindQQ() {
+      const payload = await http.request('/user/unbindQQ', { method: 'POST' });
+      return { status: 200, success: !!payload.success };
     },
   };
 }
