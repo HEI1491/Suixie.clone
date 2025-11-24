@@ -9,6 +9,18 @@ export default defineConfig({
       '@': path.resolve(__dirname, 'src'),
     },
   },
+  build: {
+    cssCodeSplit: false,
+    assetsInlineLimit: 1048576,
+    rollupOptions: {
+      output: {
+        inlineDynamicImports: true,
+        entryFileNames: 'assets/app.js',
+        chunkFileNames: 'assets/app.js',
+        assetFileNames: 'assets/[name][extname]'
+      }
+    }
+  },
   server: {
     proxy: {
       '/api/getList': {
@@ -63,6 +75,10 @@ export default defineConfig({
         target: process.env.VITE_WS_TARGET || 'http://localhost:7002',
         changeOrigin: true,
         ws: true,
+      },
+      '/api': {
+        target: 'http://localhost:7001',
+        changeOrigin: true,
       },
     },
   },

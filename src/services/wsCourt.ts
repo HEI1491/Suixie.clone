@@ -30,9 +30,10 @@ export interface CourtState {
 
 function resolveWsUrl(path: string = '/ws') {
   if (typeof window === 'undefined') return ''
-  const origin = window.location.origin
-  const url = origin.replace(/^http/, 'ws') + path
-  return url
+  const env: any = (typeof import.meta !== 'undefined' && (import.meta as any).env) || {}
+  const base = (env.VITE_WS_BASE_URL || env.VITE_API_BASE_URL || window.location.origin).replace(/^http/, 'ws')
+  const p = path.startsWith('/') ? path : `/${path}`
+  return base.replace(/\/$/, '') + p
 }
 
 export function createCourtPool(endpoint?: string, capacity: number = 16) {

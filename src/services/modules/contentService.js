@@ -24,7 +24,7 @@ export function createContentService({ http }) {
     async getShenrenList() {
       try {
         const external = (typeof import.meta !== 'undefined' && import.meta.env) ? (import.meta.env.VITE_LEADERBOARD_URL || '') : '';
-        const url = external || '/api/getList';
+        const url = external || '/getList';
         const payload = await http.request(url, { method: 'GET' });
         const list = Array.isArray(payload) ? payload : (Array.isArray(payload?.data) ? payload.data : []);
         return {

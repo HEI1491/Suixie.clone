@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { validators } from '@/services/validators.js'
 const router = useRouter()
 const route = useRoute()
 const roleSeg = (route.query.role as string) || ''
@@ -12,19 +13,17 @@ const defendantQQ = ref('')
 const plaintiffQQ = ref('')
 const caseDesc = ref('')
 const setRole = (r: '法官'|'原告'|'被告'|'观众') => { selectedRole.value = r }
-const genFromQQ = () => {
-  if (!defendantQQ.value) return
-  const rnd = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
-  secret.value = plaintiffQQ.value ? `P-${plaintiffQQ.value}-${defendantQQ.value}-${rnd}` : `P-${defendantQQ.value}-${rnd}`
-}
 const saveAndEnter = () => {
-  if (!secret.value) return
+  try { validators.secretForRole(selectedRole.value, secret.value) } catch (e) { alert(e?.message || '秘钥无效'); return }
+  if (selectedRole.value === '原告') {
+    try { validators.qq(plaintiffQQ.value); validators.qq(defendantQQ.value) } catch (e) { alert(e?.message || 'QQ格式无效'); return }
+  }
   localStorage.setItem(`COURT_SECRET_${selectedRole.value}`, secret.value)
   localStorage.setItem('COURT_VISIBILITY', visibility.value)
   if (selectedRole.value === '原告') {
     if (caseDesc.value) localStorage.setItem('CASE_DESC', caseDesc.value)
-    if (plaintiffQQ.value) localStorage.setItem('PLAINTIFF_QQ', plaintiffQQ.value)
-    if (defendantQQ.value) localStorage.setItem('DEFENDANT_QQ', defendantQQ.value)
+    localStorage.setItem('PLAINTIFF_QQ', plaintiffQQ.value)
+    localStorage.setItem('DEFENDANT_QQ', defendantQQ.value)
   }
   const seg = Object.entries(roleMap).find(([, v]) => v === selectedRole.value)?.[0] || 'judge'
   router.push(`/court/${seg}`)
@@ -44,18 +43,14 @@ const saveAndEnter = () => {
       <button class="btn" :class="{ active: selectedRole==='观众' }" @click="setRole('观众')">观众</button>
     </div>
   <div class="form">
-    <div v-if="selectedRole==='原告'" class="qq-block">
-      <label class="label">原告QQ号</label>
-      <input v-model="plaintiffQQ" class="input" placeholder="请输入原告QQ号" />
-    </div>
-    <div v-if="selectedRole==='原告'" class="qq-block">
-      <label class="label">被告QQ号</label>
-      <input v-model="defendantQQ" class="input" placeholder="请输入被告QQ号" />
-      <button class="btn" @click="genFromQQ">根据QQ生成原告秘钥</button>
-    </div>
+    
     <div v-if="selectedRole==='原告'" class="qq-block">
       <label class="label">原告案件申述请求</label>
       <textarea v-model="caseDesc" class="input" rows="4" placeholder="请在这里填写一个原告案件申述请求"></textarea>
+      <span class="label">原告QQ</span>
+      <input v-model="plaintiffQQ" class="input" placeholder="请输入原告QQ(5-12位数字)" />
+      <span class="label">被告QQ</span>
+      <input v-model="defendantQQ" class="input" placeholder="请输入被告QQ(5-12位数字)" />
     </div>
     <label class="label">案件类型</label>
     <select v-model="visibility" class="input">

@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { createCourtPool } from '@/services/wsCourt.ts'
+import { resolveApiConfig } from '@/core/config.js'
 const courtVisibility = ref<'公开' | '私有'>((localStorage.getItem('COURT_VISIBILITY') as any) || '公开')
 const judgeKey = ref((localStorage.getItem('COURT_SECRET_法官') as string) || '')
 const plaintiffKey = ref((localStorage.getItem('COURT_SECRET_原告') as string) || '')
@@ -62,7 +63,7 @@ const setVerdict = () => { pool.judgeVerdict(verdictText.value); refreshTranscri
 const openCase = () => {
   pool.openCase();
   if (!localStorage.getItem('COURT_SECRET_观众')) {
-    const s = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
+    const s = 'A-' + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
     localStorage.setItem('COURT_SECRET_观众', s)
     audienceSecret.value = s
   }
@@ -76,7 +77,15 @@ const closeCase = () => {
   courtVisibility.value = '私有'
   refreshTranscript()
 }
-const judgeAccept = () => { localStorage.setItem('CASE_STATUS','accepted'); caseStatus.value = 'accepted'; pool.judgeSetCaseStatus('accepted') }
+const judgeAccept = () => {
+  localStorage.setItem('CASE_STATUS','accepted');
+  caseStatus.value = 'accepted';
+  pool.judgeSetCaseStatus('accepted')
+  const mail = getDefendantEmail()
+  if (mail && !isSent(defendantMailKey.value)) {
+    sendApi([mail], `${caseTitle.value || '幽柠法庭'} · 被告通知`, buildDefendantHtml()).then(() => markSent(defendantMailKey.value))
+  }
+}
 const judgeReject = () => { localStorage.setItem('CASE_STATUS','rejected'); caseStatus.value = 'rejected'; pool.judgeSetCaseStatus('rejected') }
 const judgeReset = () => { localStorage.setItem('CASE_STATUS','pending'); caseStatus.value = 'pending'; pool.judgeSetCaseStatus('pending') }
 const announcementText = ref('')
@@ -99,6 +108,62 @@ const plaintiffQQ = ref(localStorage.getItem('PLAINTIFF_QQ') || '')
 const defendantQQ = ref(localStorage.getItem('DEFENDANT_QQ') || '')
 const audienceSecret = ref(localStorage.getItem('COURT_SECRET_观众') || '')
 const caseStatus = ref(((localStorage.getItem('CASE_STATUS') as any) || 'pending'))
+const makeSecret = () => Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
+const courtApiCfg = resolveApiConfig({ baseUrl: (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_COURT_API_BASE_URL) || undefined })
+const sendingMail = ref(false)
+const judgeRecipients = [ '3806973431@qq.com', '1298428557@qq.com', '486266515@qq.com', '2124007978@qq.com' ]
+const buildJudgeHtml = () => {
+  const judgeSecret = 'J-' + makeSecret()
+  return `
+    <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto;line-height:1.6;">
+      <h2>律师函审理请求</h2>
+      <p>案件：${caseTitle.value || ''}</p>
+      <p>说明：${caseDesc.value || ''}</p>
+      <p>原告QQ：${plaintiffQQ.value || ''}</p>
+      <p>被告QQ：${defendantQQ.value || ''}</p>
+      <p>原告秘钥：${plaintiffKey.value || ''}</p>
+      <p>法官秘钥：${judgeSecret}</p>
+      <p>案件类型：${courtVisibility.value}</p>
+      <p>证据：${evidencePlaintiff.value || ''}</p>
+    </div>
+  `
+}
+const buildDefendantHtml = () => {
+  const defendantSecret = 'D-' + (defendantQQ.value || '') + '-' + makeSecret()
+  return `
+    <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto;line-height:1.6;">
+      <h2>幽柠法庭被告通知</h2>
+      <p>案件：${caseTitle.value || ''}</p>
+      <p>说明：${caseDesc.value || ''}</p>
+      <p>被告QQ：${defendantQQ.value || ''}</p>
+      <p>被告秘钥：${defendantSecret}</p>
+      <p>案件类型：${courtVisibility.value}</p>
+    </div>
+  `
+}
+async function sendApi(toList, subject, html) {
+  sendingMail.value = true
+  try {
+    const base = (courtApiCfg.baseUrl || '').replace(/\/$/, '')
+    const endpoint = /\/api$/.test(base) ? `${base}/sendMail` : `${base}/api/sendMail`
+    const r = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to: toList.join(','), subject, html }) })
+    await r.json()
+  } catch {}
+  sendingMail.value = false
+}
+function getDefendantEmail() {
+  const qq = defendantQQ.value || ''
+  return qq ? `${qq}@qq.com` : ''
+}
+function markSent(key) { try { localStorage.setItem(key, '1') } catch {} }
+function isSent(key) { try { return localStorage.getItem(key) === '1' } catch { return false } }
+const judgeMailKey = ref('MAIL_SENT_JUDGE:' + (caseTitle.value || ''))
+const defendantMailKey = ref('MAIL_SENT_DEF:' + (caseTitle.value || ''))
+onMounted(() => {
+  if (currentRole === '法官' && caseStatus.value === 'pending' && !isSent(judgeMailKey.value)) {
+    sendApi(judgeRecipients, `${caseTitle.value || '幽柠法庭'} · 法官审理请求`, buildJudgeHtml()).then(() => markSent(judgeMailKey.value))
+  }
+})
 </script>
 
 <template>

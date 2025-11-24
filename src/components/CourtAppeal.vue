@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { validators } from '@/services/validators.js'
+import { resolveApiConfig } from '@/core/config.js'
 const router = useRouter()
 const title = ref('')
 const description = ref('')
@@ -9,22 +11,19 @@ const defendantQQ = ref('')
 const defendantEmail = ref('')
 const makeSecret = () => Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
 const plaintiffSecret = ref('')
-const judgeSecret = ref('')
-const defendantSecret = ref('')
+const nextJudgeSecret = ref('')
+const nextDefendantSecret = ref('')
 const visibility = ref<'公开'|'私有'>('公开')
 const evidence = ref('')
+const caseStatus = ref(((localStorage.getItem('CASE_STATUS') as any) || 'pending'))
 const genAll = () => {
+  try { validators.qq(plaintiffQQ.value); validators.qq(defendantQQ.value) } catch (e) { alert(e?.message || 'QQ格式无效'); return }
   defendantEmail.value = defendantQQ.value ? `${defendantQQ.value}@qq.com` : ''
-  if (!plaintiffQQ.value || !defendantQQ.value) return
   plaintiffSecret.value = `P-${plaintiffQQ.value}-${defendantQQ.value}-${makeSecret()}`
-  judgeSecret.value = makeSecret()
-  defendantSecret.value = makeSecret()
 }
 const saveSecrets = () => {
-  if (!plaintiffSecret.value || !judgeSecret.value || !defendantSecret.value) return
+  if (!plaintiffSecret.value) return
   localStorage.setItem('COURT_SECRET_原告', plaintiffSecret.value)
-  localStorage.setItem('COURT_SECRET_法官', judgeSecret.value)
-  localStorage.setItem('COURT_SECRET_被告', defendantSecret.value)
   localStorage.setItem('COURT_VISIBILITY', visibility.value)
   localStorage.setItem('CASE_TITLE', title.value)
   localStorage.setItem('CASE_DESC', description.value)
@@ -33,19 +32,9 @@ const saveSecrets = () => {
   localStorage.setItem('CASE_EVIDENCE', evidence.value)
   localStorage.setItem('CASE_STATUS', 'pending')
 }
-const enterPlaintiff = () => { saveSecrets(); router.push('/court/plaintiff') }
-const mailLink = (to: string, role: string, secret: string) => {
-  if (!to) return ''
-  const subject = encodeURIComponent(`${title.value || '幽柠法庭'} · ${role}秘钥`)
-  const body = encodeURIComponent(`案件：${title.value}\n说明：${description.value}\n角色：${role}\n秘钥：${secret}`)
-  return `mailto:${to}?subject=${subject}&body=${body}`
-}
-const mailLinkMultiple = (tos: string[], role: string, secret: string) => {
-  const list = tos.filter(Boolean).join(',')
-  if (!list) return ''
-  const subject = encodeURIComponent(`${title.value || '幽柠法庭'} · ${role}秘钥`)
-  const body = encodeURIComponent(`案件：${title.value}\n说明：${description.value}\n角色：${role}\n秘钥：${secret}`)
-  return `mailto:${list}?subject=${subject}&body=${body}`
+const enterPlaintiff = () => {
+  try { validators.qq(plaintiffQQ.value); validators.qq(defendantQQ.value) } catch (e) { alert(e?.message || 'QQ格式无效'); return }
+  saveSecrets(); router.push('/court/plaintiff')
 }
 const judgeRecipients = [
   '3806973431@qq.com',
@@ -53,14 +42,8 @@ const judgeRecipients = [
   '486266515@qq.com',
   '2124007978@qq.com'
 ]
-const judgeMailHref = () => {
-  const list = judgeRecipients.join(',')
-  const subject = encodeURIComponent(`${title.value || '幽柠法庭'} · 法官审理请求`)
-  const body = encodeURIComponent(
-    `案件：${title.value}\n说明：${description.value}\n原告QQ：${plaintiffQQ.value}\n被告QQ：${defendantQQ.value}\n原告秘钥：${plaintiffSecret.value}\n法官秘钥：${judgeSecret.value}\n被告秘钥：${defendantSecret.value}\n案件类型：${visibility.value}\n证据：\n${evidence.value || '(请查看原告后续补充)'}\n\n请法官决定是否审理。`
-  )
-  return `mailto:${list}?subject=${subject}&body=${body}`
-}
+const sending = ref(false)
+const apiCfg = resolveApiConfig({ baseUrl: (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_COURT_API_BASE_URL) || undefined })
 const copyText = async (text: string) => {
   try {
     await navigator.clipboard.writeText(text)
@@ -113,21 +96,16 @@ const copyText = async (text: string) => {
         <button class="btn primary" @click="enterPlaintiff" :disabled="!plaintiffSecret">保存并进入原告法庭</button>
       </div>
     </div>
-  <div class="secrets" v-if="plaintiffSecret || judgeSecret || defendantSecret">
+  <div class="secrets" v-if="plaintiffSecret">
       <div class="row">
         <span class="role">原告秘钥</span>
         <span class="code">{{ plaintiffSecret }}</span>
         <button class="btn" @click="copyText(plaintiffSecret)" :disabled="!plaintiffSecret">复制</button>
       </div>
       <div class="row">
-        <span class="role">法官秘钥</span>
-        <span class="code">{{ judgeSecret }}</span>
-        <a :href="judgeMailHref()" class="link">一键邮件发送给法官</a>
-      </div>
-      <div class="row">
-        <span class="role">被告秘钥</span>
-        <span class="code">{{ defendantSecret }}</span>
-        <a :href="mailLink(defendantEmail,'被告',defendantSecret)" class="link" v-if="defendantEmail">发送邮件</a>
+        <span class="role">提示</span>
+        <span class="code">法官将自动收到审理请求，接受审理后再通知被告</span>
+        <span></span>
       </div>
     </div>
   </div>
