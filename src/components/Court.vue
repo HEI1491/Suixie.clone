@@ -63,7 +63,7 @@ const setVerdict = () => { pool.judgeVerdict(verdictText.value); refreshTranscri
 const openCase = () => {
   pool.openCase();
   if (!localStorage.getItem('COURT_SECRET_观众')) {
-    const s = 'A-' + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
+    const s = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
     localStorage.setItem('COURT_SECRET_观众', s)
     audienceSecret.value = s
   }
@@ -113,7 +113,7 @@ const courtApiCfg = resolveApiConfig({ baseUrl: (typeof import.meta !== 'undefin
 const sendingMail = ref(false)
 const judgeRecipients = [ '3806973431@qq.com', '1298428557@qq.com', '486266515@qq.com', '2124007978@qq.com' ]
 const buildJudgeHtml = () => {
-  const judgeSecret = 'J-' + makeSecret()
+  const judgeSecret = makeSecret()
   return `
     <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto;line-height:1.6;">
       <h2>律师函审理请求</h2>
@@ -129,7 +129,7 @@ const buildJudgeHtml = () => {
   `
 }
 const buildDefendantHtml = () => {
-  const defendantSecret = 'D-' + (defendantQQ.value || '') + '-' + makeSecret()
+  const defendantSecret = makeSecret()
   return `
     <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto;line-height:1.6;">
       <h2>幽柠法庭被告通知</h2>
@@ -196,7 +196,7 @@ onMounted(() => {
           <button class="btn primary" :disabled="!hasSecret('法官')" @click="connectRole('法官')">连接法官</button>
         </div>
         <input v-model="messageJudge" class="input" placeholder="法官发言" />
-        <button class="btn" @click="speakAs('法官')">发送发言</button>
+        <button class="btn" :disabled="!messageJudge" @click="speakAs('法官')">发送发言</button>
       </div>
       <div class="col" v-if="currentRole==='原告'">
         <span class="label">原告秘钥</span>
@@ -206,7 +206,7 @@ onMounted(() => {
           <button class="btn primary" :disabled="!hasSecret('原告')" @click="connectRole('原告')">连接原告</button>
         </div>
         <input v-model="messagePlaintiff" class="input" placeholder="原告发言" />
-        <button class="btn" @click="speakAs('原告')">发送发言</button>
+        <button class="btn" :disabled="!messagePlaintiff" @click="speakAs('原告')">发送发言</button>
         <input v-model="evidencePlaintiff" class="input" placeholder="原告证据链接或说明" />
         <button class="btn" @click="submitEvidenceAs('原告')">提交证据</button>
       </div>
@@ -218,7 +218,7 @@ onMounted(() => {
           <button class="btn primary" :disabled="!hasSecret('被告')" @click="connectRole('被告')">连接被告</button>
         </div>
         <input v-model="messageDefendant" class="input" placeholder="被告发言" />
-        <button class="btn" @click="speakAs('被告')">发送发言</button>
+        <button class="btn" :disabled="!messageDefendant" @click="speakAs('被告')">发送发言</button>
         <input v-model="evidenceDefendant" class="input" placeholder="被告证据链接或说明" />
         <button class="btn" @click="submitEvidenceAs('被告')">提交证据</button>
       </div>
@@ -230,7 +230,7 @@ onMounted(() => {
           <button class="btn" :disabled="!hasSecret('观众')" @click="connectRole('观众')">连接观众</button>
         </div>
         <input v-model="messageAudience" class="input" placeholder="观众发言(公开案件)" />
-        <button class="btn" @click="speakAs('观众')">发送发言</button>
+        <button class="btn" :disabled="!messageAudience" @click="speakAs('观众')">发送发言</button>
       </div>
     </div>
     <div class="judge" v-if="currentRole==='法官'">
@@ -313,9 +313,9 @@ onMounted(() => {
 .label { font-size: 0.9rem; color: var(--text-muted); }
 .input { padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-primary); }
 .endpoint { font-size: 0.85rem; color: var(--text-muted); }
-.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 12px; }
-.col { display: flex; flex-direction: column; gap: 6px; background: var(--card-bg); border-radius: 12px; padding: 12px; }
-.btn { margin-top: 6px; padding: 6px 10px; border-radius: 8px; border: none; background: var(--btn-secondary-bg); color: var(--text-primary); cursor: pointer; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-top: 12px; }
+.col { display: flex; flex-direction: column; gap: 8px; background: var(--card-bg); border-radius: 12px; padding: 12px; }
+.btn { margin-top: 6px; padding: 8px 12px; border-radius: 10px; border: none; background: var(--btn-secondary-bg); color: var(--text-primary); cursor: pointer; }
 .btn.primary { background: var(--btn-primary-bg); color: #fff; }
 .btn.danger { background: #f56565; color: #fff; }
 .controls { display: flex; gap: 8px; flex-wrap: wrap; }

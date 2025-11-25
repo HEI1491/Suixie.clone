@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { validators } from '@/services/validators.js'
 const router = useRouter()
 const route = useRoute()
 const roleSeg = (route.query.role as string) || ''
@@ -14,16 +13,13 @@ const plaintiffQQ = ref('')
 const caseDesc = ref('')
 const setRole = (r: '法官'|'原告'|'被告'|'观众') => { selectedRole.value = r }
 const saveAndEnter = () => {
-  try { validators.secretForRole(selectedRole.value, secret.value) } catch (e) { alert(e?.message || '秘钥无效'); return }
-  if (selectedRole.value === '原告') {
-    try { validators.qq(plaintiffQQ.value); validators.qq(defendantQQ.value) } catch (e) { alert(e?.message || 'QQ格式无效'); return }
-  }
+  if (!secret.value) return
   localStorage.setItem(`COURT_SECRET_${selectedRole.value}`, secret.value)
   localStorage.setItem('COURT_VISIBILITY', visibility.value)
   if (selectedRole.value === '原告') {
     if (caseDesc.value) localStorage.setItem('CASE_DESC', caseDesc.value)
-    localStorage.setItem('PLAINTIFF_QQ', plaintiffQQ.value)
-    localStorage.setItem('DEFENDANT_QQ', defendantQQ.value)
+    if (plaintiffQQ.value) localStorage.setItem('PLAINTIFF_QQ', plaintiffQQ.value)
+    if (defendantQQ.value) localStorage.setItem('DEFENDANT_QQ', defendantQQ.value)
   }
   const seg = Object.entries(roleMap).find(([, v]) => v === selectedRole.value)?.[0] || 'judge'
   router.push(`/court/${seg}`)
@@ -47,10 +43,6 @@ const saveAndEnter = () => {
     <div v-if="selectedRole==='原告'" class="qq-block">
       <label class="label">原告案件申述请求</label>
       <textarea v-model="caseDesc" class="input" rows="4" placeholder="请在这里填写一个原告案件申述请求"></textarea>
-      <span class="label">原告QQ</span>
-      <input v-model="plaintiffQQ" class="input" placeholder="请输入原告QQ(5-12位数字)" />
-      <span class="label">被告QQ</span>
-      <input v-model="defendantQQ" class="input" placeholder="请输入被告QQ(5-12位数字)" />
     </div>
     <label class="label">案件类型</label>
     <select v-model="visibility" class="input">
@@ -69,16 +61,16 @@ const saveAndEnter = () => {
 </template>
 
 <style scoped>
-.gate { max-width: 640px; margin: 0 auto; padding: 24px; }
-.title { font-size: 1.6rem; margin-bottom: 16px; color: var(--text-primary); }
-.roles { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
-.btn { padding: 8px 12px; border-radius: 8px; border: none; background: var(--btn-secondary-bg); color: var(--text-primary); cursor: pointer; }
+.gate { max-width: 720px; margin: 0 auto; padding: 24px; }
+.title { font-size: 1.8rem; margin-bottom: 16px; color: var(--text-primary); }
+.roles { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.btn { padding: 10px 12px; border-radius: 10px; border: none; background: var(--btn-secondary-bg); color: var(--text-primary); cursor: pointer; }
 .btn.primary { background: var(--btn-primary-bg); color: #fff; margin-top: 10px; }
 .btn.active { background: #357ABD; color: #fff; }
-.form { display: flex; flex-direction: column; gap: 6px; background: var(--card-bg); border-radius: 12px; padding: 12px; }
-.label { font-size: 0.9rem; color: var(--text-muted); }
-.input { padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-primary); }
+.form { display: flex; flex-direction: column; gap: 8px; background: var(--card-bg); border-radius: 12px; padding: 14px; }
+.label { font-size: 0.95rem; color: var(--text-muted); }
+.input { padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-primary); }
 .hint { margin-top: 6px; font-size: 0.85rem; color: var(--text-muted); }
 .links { margin-bottom: 10px; }
-.qq-block { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.qq-block { display: grid; grid-template-columns: 100px 1fr; gap: 8px; align-items: center; }
 </style>

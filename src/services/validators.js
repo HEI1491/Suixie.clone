@@ -10,7 +10,6 @@ export const validators = {
       throw new ApiError('Invalid email format', { status: 400 });
     }
   },
-
   password(value) {
     if (!value) {
       throw new ApiError('Missing password', { status: 400 });
@@ -19,7 +18,6 @@ export const validators = {
       throw new ApiError('Weak password', { status: 400 });
     }
   },
-
   code(value) {
     if (!value) {
       throw new ApiError('Missing mail code', { status: 400 });
@@ -28,20 +26,17 @@ export const validators = {
       throw new ApiError('Mail code must be numeric', { status: 400 });
     }
   },
-
   username(value) {
     if (!value) {
       throw new ApiError('Missing username', { status: 400 });
     }
   },
-
   qq(value) {
     const v = String(value || '').trim();
     if (!/^\d{5,12}$/.test(v)) {
       throw new ApiError('Invalid qq', { status: 400 });
     }
   },
-
   secretForRole(role, secret) {
     const s = String(secret || '').trim();
     if (!s) {

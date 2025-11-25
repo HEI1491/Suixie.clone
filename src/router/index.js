@@ -1,7 +1,6 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import Court from '../components/Court.vue'
 import { API_DEFAULTS } from '../core/constants.js'
-import { validators } from '../services/validators.js'
 
 const home = () => import('../components/home.vue')
 const register = () => import('../components/register.vue')
@@ -35,8 +34,8 @@ const routes = [
         const seg = to.params.role
         const map = { judge: '法官', plaintiff: '原告', defendant: '被告', audience: '观众' }
         const role = map[seg] || seg
-        const secret = localStorage.getItem(`COURT_SECRET_${role}`) || ''
-        try { validators.secretForRole(role, secret) } catch { return { path: '/court/gate', query: { role: seg } } }
+        const has = !!localStorage.getItem(`COURT_SECRET_${role}`)
+        if (!has) return { path: '/court/gate', query: { role: seg } }
       } },
     { path: '/:pathMatch(.*)*', component: notFound }
 ]

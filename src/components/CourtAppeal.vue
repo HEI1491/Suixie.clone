@@ -16,8 +16,9 @@ const nextDefendantSecret = ref('')
 const visibility = ref<'公开'|'私有'>('公开')
 const evidence = ref('')
 const caseStatus = ref(((localStorage.getItem('CASE_STATUS') as any) || 'pending'))
+const isValidQQ = (v: string) => /^\d{5,12}$/.test(String(v || '').trim())
 const genAll = () => {
-  try { validators.qq(plaintiffQQ.value); validators.qq(defendantQQ.value) } catch (e) { alert(e?.message || 'QQ格式无效'); return }
+  if (!isValidQQ(plaintiffQQ.value) || !isValidQQ(defendantQQ.value)) { alert('QQ格式无效(需5-12位数字)'); return }
   defendantEmail.value = defendantQQ.value ? `${defendantQQ.value}@qq.com` : ''
   plaintiffSecret.value = `P-${plaintiffQQ.value}-${defendantQQ.value}-${makeSecret()}`
 }
@@ -33,7 +34,7 @@ const saveSecrets = () => {
   localStorage.setItem('CASE_STATUS', 'pending')
 }
 const enterPlaintiff = () => {
-  try { validators.qq(plaintiffQQ.value); validators.qq(defendantQQ.value) } catch (e) { alert(e?.message || 'QQ格式无效'); return }
+  if (!isValidQQ(plaintiffQQ.value) || !isValidQQ(defendantQQ.value)) { alert('QQ格式无效(需5-12位数字)'); return }
   saveSecrets(); router.push('/court/plaintiff')
 }
 const judgeRecipients = [
@@ -73,11 +74,11 @@ const copyText = async (text: string) => {
     <div class="grid">
         <div class="col">
           <span class="label">原告QQ号</span>
-          <input v-model="plaintiffQQ" class="input" placeholder="请输入原告QQ号" />
+          <input v-model="plaintiffQQ" class="input" placeholder="请输入原告QQ号(5-12位数字)" />
         </div>
         <div class="col">
           <span class="label">被告QQ号</span>
-          <input v-model="defendantQQ" class="input" placeholder="请输入被告QQ号" />
+          <input v-model="defendantQQ" class="input" placeholder="请输入被告QQ号(5-12位数字)" />
         </div>
         <div class="col">
           <span class="label">被告邮箱</span>
@@ -92,7 +93,7 @@ const copyText = async (text: string) => {
         </div>
       </div>
       <div class="controls">
-        <button class="btn" @click="genAll" :disabled="!plaintiffQQ || !defendantQQ">生成秘钥</button>
+        <button class="btn" @click="genAll" :disabled="!(plaintiffQQ && defendantQQ && isValidQQ(plaintiffQQ) && isValidQQ(defendantQQ))">生成秘钥</button>
         <button class="btn primary" @click="enterPlaintiff" :disabled="!plaintiffSecret">保存并进入原告法庭</button>
       </div>
     </div>
@@ -113,14 +114,14 @@ const copyText = async (text: string) => {
 
 <style scoped>
 .appeal { max-width: 860px; margin: 0 auto; padding: 20px; }
-.title { font-size: 1.6rem; margin-bottom: 16px; color: var(--text-primary); }
-.form { display: flex; flex-direction: column; gap: 8px; background: var(--card-bg); border-radius: 12px; padding: 12px; }
-.label { font-size: 0.9rem; color: var(--text-muted); }
-.input { padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-primary); }
-.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
-.col { display: flex; flex-direction: column; gap: 6px; }
-.controls { display: flex; gap: 8px; }
-.btn { padding: 8px 12px; border-radius: 8px; border: none; background: var(--btn-secondary-bg); color: var(--text-primary); cursor: pointer; }
+.title { font-size: 1.8rem; margin-bottom: 16px; color: var(--text-primary); }
+.form { display: flex; flex-direction: column; gap: 10px; background: var(--card-bg); border-radius: 12px; padding: 14px; }
+.label { font-size: 0.95rem; color: var(--text-muted); }
+.input { padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-primary); }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.col { display: flex; flex-direction: column; gap: 8px; }
+.controls { display: flex; gap: 10px; flex-wrap: wrap; }
+.btn { padding: 10px 12px; border-radius: 10px; border: none; background: var(--btn-secondary-bg); color: var(--text-primary); cursor: pointer; }
 .btn.primary { background: var(--btn-primary-bg); color: #fff; }
 .secrets { margin-top: 12px; background: var(--btn-secondary-bg); border-radius: 12px; padding: 12px; }
 .row { display: grid; grid-template-columns: 100px 1fr auto; align-items: center; gap: 12px; padding: 6px 0; }
