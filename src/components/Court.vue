@@ -58,6 +58,7 @@ const toggleMute = (role: '原告' | '被告' | '观众') => {
   if (map[role].value) pool.judgeMute(role)
   else pool.judgeUnmute(role)
   refreshTranscript()
+  playTheme()
 }
 const setVerdict = () => { pool.judgeVerdict(verdictText.value); refreshTranscript() }
 const openCase = () => {
@@ -85,6 +86,7 @@ const judgeAccept = () => {
   if (mail && !isSent(defendantMailKey.value)) {
     sendApi([mail], `${caseTitle.value || '幽柠法庭'} · 被告通知`, buildDefendantHtml()).then(() => markSent(defendantMailKey.value))
   }
+  playTheme()
 }
 const judgeReject = () => { localStorage.setItem('CASE_STATUS','rejected'); caseStatus.value = 'rejected'; pool.judgeSetCaseStatus('rejected') }
 const judgeReset = () => { localStorage.setItem('CASE_STATUS','pending'); caseStatus.value = 'pending'; pool.judgeSetCaseStatus('pending') }
@@ -108,6 +110,12 @@ const plaintiffQQ = ref(localStorage.getItem('PLAINTIFF_QQ') || '')
 const defendantQQ = ref(localStorage.getItem('DEFENDANT_QQ') || '')
 const audienceSecret = ref(localStorage.getItem('COURT_SECRET_观众') || '')
 const caseStatus = ref(((localStorage.getItem('CASE_STATUS') as any) || 'pending'))
+const themeEnabled = ref(true)
+const themeUrl = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_COURT_THEME_URL) || '/court_theme.mp3'
+let themeAudio: HTMLAudioElement | null = null
+function ensureTheme() { if (!themeAudio) { try { themeAudio = new Audio(themeUrl); themeAudio.loop = false; themeAudio.volume = 0.7 } catch {} } }
+function playTheme() { ensureTheme(); if (themeEnabled.value && themeAudio) { try { themeAudio.currentTime = 0; themeAudio.play().catch(() => {}) } catch {} } }
+function stopTheme() { if (themeAudio) { try { themeAudio.pause() } catch {} } }
 const makeSecret = () => Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
 const courtApiCfg = resolveApiConfig({ baseUrl: (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_COURT_API_BASE_URL) || undefined })
 const sendingMail = ref(false)
@@ -239,6 +247,7 @@ onMounted(() => {
         <button class="btn" :class="{ active: mutedPlaintiff }" @click="toggleMute('原告')">{{ mutedPlaintiff ? '解除原告禁言' : '禁言原告' }}</button>
         <button class="btn" :class="{ active: mutedDefendant }" @click="toggleMute('被告')">{{ mutedDefendant ? '解除被告禁言' : '禁言被告' }}</button>
         <button class="btn" :class="{ active: mutedAudience }" @click="toggleMute('观众')">{{ mutedAudience ? '解除观众禁言' : '禁言观众' }}</button>
+        <button class="btn" :class="{ active: themeEnabled }" @click="themeEnabled = !themeEnabled; if (!themeEnabled) stopTheme()">{{ themeEnabled ? '关闭开庭音乐' : '开启开庭音乐' }}</button>
       </div>
       <input v-model="verdictText" class="input" placeholder="判决书摘要" />
       <div class="controls">
