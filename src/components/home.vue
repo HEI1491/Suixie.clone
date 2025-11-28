@@ -135,7 +135,6 @@ const playEasterEgg = () => {
   }
 }
 
-// 音乐播放（来自 /music 目录）
 const musicList = ref<string[]>([])
 const musicReady = ref(false)
 const musicAudio = ref<HTMLAudioElement | null>(null)
