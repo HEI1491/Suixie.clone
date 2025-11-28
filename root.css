@@ -3,6 +3,11 @@ body{
     padding:0;
     border:0;
 }
+html{ -webkit-text-size-adjust: 100%; }
+
+* { box-sizing: border-box; }
+img { max-width: 100%; height: auto; display: block; }
+a, button { -webkit-tap-highlight-color: transparent; }
 
 /* Global UI buttons unified with CustomerService styles */
 .btn {
