@@ -355,7 +355,7 @@ input:focus {
 
 @media (max-width: 768px) {
   .login-container {
-    padding: 10px 10px 80px;
+    padding: 10px;
   }
 
   .login-card {

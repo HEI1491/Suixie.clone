@@ -659,10 +659,9 @@ onMounted(() => {
 /* 全局样式 */
 .home-container {
   height: 100vh;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden; /* 防止页面滚动 */
   background: var(--body-bg);
-  padding: 80px 20px 80px;
+  padding: 80px 20px 20px;
   transition: background var(--transition-slow), color var(--transition-normal);
   box-sizing: border-box;
 }
@@ -808,8 +807,8 @@ onMounted(() => {
   max-width: 980px;
   margin: 0 auto;
   padding: 20px 0;
-  height: calc(100vh - 120px);
-  overflow-y: auto;
+  height: calc(100vh - 120px); /* 计算内容区域高度，确保不超出视口 */
+  overflow-y: hidden; /* 取消外层滚动 */
   box-sizing: border-box;
 }
 
@@ -988,7 +987,7 @@ onMounted(() => {
 /* 响应式设计 */
 @media (max-width: 768px) {
   .home-container {
-    padding: 70px 15px 80px;
+    padding: 70px 15px 20px;
   }
   
   .top-header {
@@ -1025,7 +1024,7 @@ onMounted(() => {
 
 @media (max-width: 480px) {
   .home-container {
-    padding: 70px 10px 80px;
+    padding: 70px 10px 20px;
   }
   
   .top-header {
