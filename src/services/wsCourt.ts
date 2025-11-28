@@ -28,17 +28,13 @@ export interface CourtState {
   caseStatus?: 'pending' | 'accepted' | 'rejected'
 }
 
-function resolveWsUrl(path: string = '/ws') {
-  if (typeof window === 'undefined') return ''
-  const env: any = (typeof import.meta !== 'undefined' && (import.meta as any).env) || {}
-  const base = (env.VITE_WS_BASE_URL || env.VITE_API_BASE_URL || window.location.origin).replace(/^http/, 'ws')
-  const p = path.startsWith('/') ? path : `/${path}`
-  return base.replace(/\/$/, '') + p
-}
+import { resolveCourtConfig } from '@/core/courtConfig.js'
 
-export function createCourtPool(endpoint?: string, capacity: number = 16) {
-  const url = endpoint || resolveWsUrl()
-  const sessions: Session[] = Array.from({ length: capacity }, (_, i) => ({ id: i, ws: null, status: 'idle', marked: false }))
+export function createCourtPool(endpoint?: string, capacity?: number) {
+  const cfg = resolveCourtConfig()
+  const url = endpoint || cfg.wsUrl
+  const cap = capacity ?? cfg.capacity
+  const sessions: Session[] = Array.from({ length: cap }, (_, i) => ({ id: i, ws: null, status: 'idle', marked: false }))
   const lastOfRole: Partial<Record<Role, number>> = {}
   const transcript: TranscriptEvent[] = []
   const state: CourtState = { open: true, visibility: '公开', muted: { 法官: false, 原告: false, 被告: false, 观众: false, 证人: false } }
