@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useTheme } from '@/composables/useTheme.js'
 import { API_DEFAULTS } from '@/core/constants.js'
 import '../assets/register.css'
+import easterEggAudioUrl from '../../彩蛋.mp3'
 
 const router = useRouter()
 const { themePreference, resolvedTheme, themeToggleLabel, themeIcon, cycleThemePreference } = useTheme()
@@ -124,6 +125,15 @@ const toggleDarkMode = (event: MouseEvent) => {
   ripple.addEventListener('animationend', () => {
     ripple.remove();
   });
+}
+
+const easterAudio = ref<HTMLAudioElement | null>(null)
+const playEasterEgg = () => {
+  if (!easterAudio.value) easterAudio.value = new Audio(easterEggAudioUrl)
+  if (easterAudio.value) {
+    easterAudio.value.currentTime = 0
+    easterAudio.value.play().catch(() => {})
+  }
 }
 
 // 解析服务器info字符串
@@ -369,7 +379,7 @@ onMounted(() => {
     <header class="top-header">
       <!-- 网站Logo -->
       <div class="site-logo">
-        <div class="logo-content">
+        <div class="logo-content" @click="playEasterEgg" title="点击播放彩蛋">
           <img src="/vite.svg" alt="Logo" class="logo-icon">
           <span class="logo-text">幽柠之域</span>
         </div>
