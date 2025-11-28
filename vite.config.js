@@ -35,6 +35,10 @@ export default defineConfig({
         target: 'http://localhost:7001',
         changeOrigin: true,
       },
+      '/music': {
+        target: 'http://localhost:7001',
+        changeOrigin: true,
+      },
       '/login': {
         target: 'http://localhost:7001/api',
         changeOrigin: true,

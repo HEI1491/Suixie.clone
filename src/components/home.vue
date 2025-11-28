@@ -135,49 +135,53 @@ const playEasterEgg = () => {
   }
 }
 
+// 音乐播放（来自 /music 目录）
+const musicList = ref<string[]>([])
+const musicReady = ref(false)
 const musicAudio = ref<HTMLAudioElement | null>(null)
-const musicPlaying = ref(false)
-const currentMusicUrl = ref<string | null>(null)
-const toggleMusic = async () => {
+const musicPaused = ref(true)
+const currentMusic = ref<string | null>(null)
+
+const loadMusicList = async () => {
   try {
-    if (!musicAudio.value) {
-      const resp = await fetch('/api/music/random', { credentials: 'include' })
-      if (!resp.ok) return
-      const data = await resp.json()
-      const url = data?.url
-      if (!url) return
-      currentMusicUrl.value = url
-      musicAudio.value = new Audio(url)
-      musicAudio.value.addEventListener('ended', () => { musicPlaying.value = false })
-      await musicAudio.value.play().catch(() => {})
-      musicPlaying.value = true
-      return
-    }
-    if (musicPlaying.value) {
-      musicAudio.value.pause()
-      musicPlaying.value = false
-    } else {
-      if (!currentMusicUrl.value) {
-        const resp = await fetch('/api/music/random', { credentials: 'include' })
-        if (resp.ok) {
-          const data = await resp.json()
-          const url = data?.url
-          if (url) {
-            currentMusicUrl.value = url
-            musicAudio.value.src = url
-          }
-        }
-      }
-      await musicAudio.value.play().catch(() => {})
-      musicPlaying.value = true
-    }
-  } catch {}
+    const res = await fetch('/api/music/list')
+    if (!res.ok) throw new Error(String(res.status))
+    const data = await res.json()
+    musicList.value = Array.isArray(data.files) ? data.files : []
+    musicReady.value = musicList.value.length > 0
+  } catch {
+    musicList.value = []
+    musicReady.value = false
+  }
 }
 
-onUnmounted(() => {
-  try { musicAudio.value?.pause() } catch {}
-  musicAudio.value = null
-})
+const playRandomMusic = async () => {
+  if (!musicReady.value) await loadMusicList()
+  if (!musicList.value.length) return
+  const idx = Math.floor(Math.random() * musicList.value.length)
+  const url = musicList.value[idx]
+  currentMusic.value = url
+  if (musicAudio.value) {
+    try { musicAudio.value.pause() } catch {}
+  }
+  musicAudio.value = new Audio(url)
+  musicAudio.value.onended = () => { musicPaused.value = true; currentMusic.value = null }
+  musicAudio.value.play().then(() => { musicPaused.value = false }).catch(() => { musicPaused.value = true })
+}
+
+const toggleMusic = async () => {
+  if (!musicAudio.value || musicPaused.value && !currentMusic.value) {
+    await playRandomMusic()
+    return
+  }
+  if (musicAudio.value && !musicPaused.value) {
+    try { musicAudio.value.pause(); musicPaused.value = true } catch {}
+    return
+  }
+  if (musicAudio.value && musicPaused.value && currentMusic.value) {
+    try { await musicAudio.value.play(); musicPaused.value = false } catch {}
+  }
+}
 
 // 解析服务器info字符串
 const parseServerInfo = (infoString) => {
@@ -407,12 +411,17 @@ onMounted(() => {
     const shenrenInterval = setInterval(fetchShenrenList, 300000)
     
     // 清理定时器
-    onUnmounted(() => {
-      clearInterval(statusInterval)
-      clearInterval(shenrenInterval)
-      window.removeEventListener('storage', onStorage as any)
-    })
+  onUnmounted(() => {
+    clearInterval(statusInterval)
+    clearInterval(shenrenInterval)
+    window.removeEventListener('storage', onStorage as any)
   })
+})
+
+onUnmounted(() => {
+  try { musicAudio.value?.pause() } catch {}
+  musicAudio.value = null
+})
 
 </script>
 
@@ -431,8 +440,8 @@ onMounted(() => {
         <button class="header-btn theme-toggle" @click="toggleDarkMode" :title="themeToggleLabel">
           {{ themeIcon }}
         </button>
-        <button class="header-btn theme-toggle" @click="toggleMusic" :title="musicPlaying ? '暂停随机音乐' : '随机播放音乐'">
-          {{ musicPlaying ? '⏸️' : '🎵' }}
+        <button class="header-btn theme-toggle" @click="toggleMusic" :title="musicPaused ? '随机播放音乐' : '暂停音乐'">
+          {{ musicPaused ? '🎵' : '⏸️' }}
         </button>
         <template v-if="!isLoggedIn">
           <button class="header-btn login-btn" @click="navigateTo('login')">登录</button>
