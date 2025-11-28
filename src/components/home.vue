@@ -4,7 +4,6 @@ import { useRouter } from 'vue-router'
 import { useTheme } from '@/composables/useTheme.js'
 import { API_DEFAULTS } from '@/core/constants.js'
 import '../assets/register.css'
-import easterEggAudioUrl from '../../彩蛋.mp3'
 
 const router = useRouter()
 const { themePreference, resolvedTheme, themeToggleLabel, themeIcon, cycleThemePreference } = useTheme()
@@ -129,7 +128,7 @@ const toggleDarkMode = (event: MouseEvent) => {
 
 const easterAudio = ref<HTMLAudioElement | null>(null)
 const playEasterEgg = () => {
-  if (!easterAudio.value) easterAudio.value = new Audio(easterEggAudioUrl)
+  if (!easterAudio.value) easterAudio.value = new Audio('/彩蛋.mp3')
   if (easterAudio.value) {
     easterAudio.value.currentTime = 0
     easterAudio.value.play().catch(() => {})
