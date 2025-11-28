@@ -135,6 +135,50 @@ const playEasterEgg = () => {
   }
 }
 
+const musicAudio = ref<HTMLAudioElement | null>(null)
+const musicPlaying = ref(false)
+const currentMusicUrl = ref<string | null>(null)
+const toggleMusic = async () => {
+  try {
+    if (!musicAudio.value) {
+      const resp = await fetch('/api/music/random', { credentials: 'include' })
+      if (!resp.ok) return
+      const data = await resp.json()
+      const url = data?.url
+      if (!url) return
+      currentMusicUrl.value = url
+      musicAudio.value = new Audio(url)
+      musicAudio.value.addEventListener('ended', () => { musicPlaying.value = false })
+      await musicAudio.value.play().catch(() => {})
+      musicPlaying.value = true
+      return
+    }
+    if (musicPlaying.value) {
+      musicAudio.value.pause()
+      musicPlaying.value = false
+    } else {
+      if (!currentMusicUrl.value) {
+        const resp = await fetch('/api/music/random', { credentials: 'include' })
+        if (resp.ok) {
+          const data = await resp.json()
+          const url = data?.url
+          if (url) {
+            currentMusicUrl.value = url
+            musicAudio.value.src = url
+          }
+        }
+      }
+      await musicAudio.value.play().catch(() => {})
+      musicPlaying.value = true
+    }
+  } catch {}
+}
+
+onUnmounted(() => {
+  try { musicAudio.value?.pause() } catch {}
+  musicAudio.value = null
+})
+
 // 解析服务器info字符串
 const parseServerInfo = (infoString) => {
   const status = {
@@ -386,6 +430,9 @@ onMounted(() => {
       <div class="auth-buttons">
         <button class="header-btn theme-toggle" @click="toggleDarkMode" :title="themeToggleLabel">
           {{ themeIcon }}
+        </button>
+        <button class="header-btn theme-toggle" @click="toggleMusic" :title="musicPlaying ? '暂停随机音乐' : '随机播放音乐'">
+          {{ musicPlaying ? '⏸️' : '🎵' }}
         </button>
         <template v-if="!isLoggedIn">
           <button class="header-btn login-btn" @click="navigateTo('login')">登录</button>
