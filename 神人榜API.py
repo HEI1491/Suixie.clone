@@ -8,8 +8,8 @@ app = Flask(__name__)
 
 # --- 数据库配置 ---
 DB_CONFIG = {
-    'host': '183.131.51.178',
-    'port': 5432,
+    'host': '110.42.96.105',
+    'port': 50333,
     'database': 'mdt', # 注意：JDBC URL 显示数据库名是 'mdt'
     'user': 'postgres',
     'password': '@3357'
