@@ -166,11 +166,18 @@ export function createHttpClient({ baseUrl, apiKey, timeoutMs = 8000 }) {
         } catch {}
       } else if (/^https?:\/\//i.test(normalizedBaseUrl)) {
         const endsWithApi = /\/api\/?$/.test(normalizedBaseUrl);
-        // 优先尝试 /api 前缀，确保命中后端 API 路径，而不是静态资源
+        // 如果未携带 /api 前缀，优先尝试 /api，随后尝试原始基础地址
         if (!endsWithApi) {
           try { add(new URL('api/', normalizedBaseUrl).toString()); } catch {}
+          add(normalizedBaseUrl);
+        } else {
+          // 如果基础地址自带 /api，仍然追加一个“去掉 /api”的兜底，避免后端未挂载前缀时 404
+          add(normalizedBaseUrl);
+          try {
+            const withoutApi = normalizedBaseUrl.replace(/\/api\/?$/, '/');
+            add(withoutApi);
+          } catch {}
         }
-        add(normalizedBaseUrl);
       } else {
         add(normalizedBaseUrl);
         if (normalizedBaseUrl.replace(/\/$/, '') !== '/api') add('/api');
