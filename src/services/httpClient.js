@@ -165,11 +165,12 @@ export function createHttpClient({ baseUrl, apiKey, timeoutMs = 8000 }) {
           }
         } catch {}
       } else if (/^https?:\/\//i.test(normalizedBaseUrl)) {
-        add(normalizedBaseUrl);
         const endsWithApi = /\/api\/?$/.test(normalizedBaseUrl);
+        // 优先尝试 /api 前缀，确保命中后端 API 路径，而不是静态资源
         if (!endsWithApi) {
-          add(new URL('api/', normalizedBaseUrl).toString());
+          try { add(new URL('api/', normalizedBaseUrl).toString()); } catch {}
         }
+        add(normalizedBaseUrl);
       } else {
         add(normalizedBaseUrl);
         if (normalizedBaseUrl.replace(/\/$/, '') !== '/api') add('/api');
