@@ -135,11 +135,12 @@ const playEasterEgg = () => {
   }
 }
 
+const musicEl = ref<HTMLAudioElement | null>(null)
 const musicList = ref<string[]>([])
 const musicReady = ref(false)
-const musicAudio = ref<HTMLAudioElement | null>(null)
 const musicPaused = ref(true)
 const currentMusic = ref<string | null>(null)
+const currentIndex = ref<number>(-1)
 
 const loadMusicList = async () => {
   try {
@@ -147,39 +148,46 @@ const loadMusicList = async () => {
     if (!res.ok) throw new Error(String(res.status))
     const data = await res.json()
     musicList.value = Array.isArray(data.files) ? data.files : []
-    musicReady.value = musicList.value.length > 0
   } catch {
     musicList.value = []
-    musicReady.value = false
   }
+  musicReady.value = musicList.value.length > 0
 }
 
 const playRandomMusic = async () => {
   if (!musicReady.value) await loadMusicList()
-  if (!musicList.value.length) return
+  if (!musicList.value.length || !musicEl.value) return
   const idx = Math.floor(Math.random() * musicList.value.length)
   const url = musicList.value[idx]
+  currentIndex.value = idx
   currentMusic.value = url
-  if (musicAudio.value) {
-    try { musicAudio.value.pause() } catch {}
-  }
-  musicAudio.value = new Audio(url)
-  musicAudio.value.onended = () => { musicPaused.value = true; currentMusic.value = null }
-  musicAudio.value.play().then(() => { musicPaused.value = false }).catch(() => { musicPaused.value = true })
+  try { musicEl.value.src = url } catch {}
+  try { await musicEl.value.play(); musicPaused.value = false } catch { musicPaused.value = true }
 }
 
 const toggleMusic = async () => {
-  if (!musicAudio.value || musicPaused.value && !currentMusic.value) {
+  if (!musicEl.value || (musicPaused.value && !currentMusic.value)) {
     await playRandomMusic()
     return
   }
-  if (musicAudio.value && !musicPaused.value) {
-    try { musicAudio.value.pause(); musicPaused.value = true } catch {}
+  if (!musicPaused.value && musicEl.value) {
+    try { musicEl.value.pause(); musicPaused.value = true } catch {}
     return
   }
-  if (musicAudio.value && musicPaused.value && currentMusic.value) {
-    try { await musicAudio.value.play(); musicPaused.value = false } catch {}
+  if (musicEl.value && musicPaused.value && currentMusic.value) {
+    try { await musicEl.value.play(); musicPaused.value = false } catch {}
   }
+}
+
+const nextMusic = async () => {
+  if (!musicReady.value) await loadMusicList()
+  if (!musicList.value.length || !musicEl.value) return
+  const next = (currentIndex.value >= 0 ? (currentIndex.value + 1) : 0) % musicList.value.length
+  currentIndex.value = next
+  const url = musicList.value[next]
+  currentMusic.value = url
+  try { musicEl.value.src = url } catch {}
+  try { await musicEl.value.play(); musicPaused.value = false } catch { musicPaused.value = true }
 }
 
 // 解析服务器info字符串
@@ -389,6 +397,10 @@ const openHitokoto = () => {
 }
 
 onMounted(() => {
+    if (musicEl.value) {
+      try { musicEl.value.preload = 'none' } catch {}
+      musicEl.value.onended = () => { musicPaused.value = true; currentMusic.value = null }
+    }
     // 获取一言数据
     fetchHitokoto()
     
@@ -397,6 +409,7 @@ onMounted(() => {
     
     // 获取神人榜
     fetchShenrenList()
+    loadMusicList()
     syncAuth()
     const onStorage = (e: StorageEvent) => {
       if (e.key === tokenKey) syncAuth()
@@ -418,8 +431,8 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  try { musicAudio.value?.pause() } catch {}
-  musicAudio.value = null
+  try { musicEl.value?.pause() } catch {}
+  musicEl.value = null
 })
 
 </script>
@@ -442,6 +455,7 @@ onUnmounted(() => {
         <button class="header-btn theme-toggle" @click="toggleMusic" :title="musicPaused ? '随机播放音乐' : '暂停音乐'">
           {{ musicPaused ? '🎵' : '⏸️' }}
         </button>
+        <button class="header-btn theme-toggle" @click="nextMusic" title="下一首">⏭️</button>
         <template v-if="!isLoggedIn">
           <button class="header-btn login-btn" @click="navigateTo('login')">登录</button>
           <button class="header-btn register-btn" @click="navigateTo('register')">注册</button>
@@ -453,6 +467,7 @@ onUnmounted(() => {
       </div>
       <div v-if="!isLoggedIn" class="login-hint-art">因反向代理不稳定，登录失败请重试</div>
     </header>
+    <audio ref="musicEl" style="display:none"></audio>
     
     <!-- 主要内容区域 -->
     <main class="main-content">
