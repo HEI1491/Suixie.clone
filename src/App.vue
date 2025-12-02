@@ -21,25 +21,9 @@ export default {
   <RouterView id="view"></RouterView>
   <button class="back-home-btn" v-if="$route.path !== '/'" @click="$router.push('/')">返回主页</button>
   <div class="disclaimer" v-if="$route.path.startsWith('/court')">《娱乐项目 | 请勿模仿》</div>
-  <!-- 调试用组件（当前已注释） -->
-  <!--<div><debug></debug></div>-->
-  <footer class="site-footer">
-    <div class="footer-content">
-      <a class="beian-link" href="https://beian.mps.gov.cn/#/query/webSearch?code=32058302005589" rel="noreferrer" target="_blank" aria-label="公安备案查询">
-        <img class="beian-img" :src="beianImg" width="18" alt="公安备案图标" aria-hidden="true" />
-        <span>苏公网安备32058302005589号</span>
-      </a>
-      <span class="divider">|</span>
-      <a class="icp-link" href="https://beian.miit.gov.cn/#/Integrated/index" rel="noreferrer" target="_blank" aria-label="ICP备案查询">
-        <span class="icp-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-            <path d="M6 2h9l3 3v15a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2zm9 3h3l-3-3v3zM8 9h8v2H8V9zm0 4h8v2H8v-2z"/>
-          </svg>
-        </span>
-        <span>苏ICP备2025219581号-1</span>
-      </a>
-    </div>
-  </footer>
+  
+  <!-- 全局备案信息（文档流内，非fixed） -->
+  <BeianFooter />
 </template>
 
 <style scoped>
