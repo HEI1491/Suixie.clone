@@ -136,21 +136,30 @@ const playEasterEgg = () => {
 }
 
 const musicEl = ref<HTMLAudioElement | null>(null)
-const musicList = ref<string[]>([])
+const musicList = ref<string[]>([
+  '/music/偷吃の小曲——曼波、那咩、有时哈基米 - 1.偷吃の小曲——曼波、那咩、有时哈基米(Av114642844131180,P1).mp3',
+  '/music/冬 の 哈 - 1.冬 の 哈(Av115492157130042,P1).mp3',
+  '/music/哈基山的基米美如水啊.mp3',
+  '/music/哈基米Phonk音乐之This Feeling完整版 - 1.哈基米Phonk音乐之This Feeling完整版(Av112893198600841,P1).mp3',
+  '/music/哈基米音乐之 Cure for 咪 （完整版） - 1.哈基米音乐之 Cure for 咪 （完整版）(Av114345283490381,P1).mp3',
+  '/music/哈基米：Lifeline.mp3',
+  '/music/哈基米：🎵Pneumatic Tokyo🎵 - 1.哈基米：🎵Pneumatic Tokyo🎵(Av114907420824236,P1).mp3',
+  '/music/无基区🎵完整版 - 1.无基区🎵完整版(Av114707721623377,P1).mp3',
+  '/music/曼波FM之《DEAD 基米 INSIDE》 - 1.lv_0_20250409142801(Av114306595163027,P1).mp3',
+  '/music/鼠鼠之歌《寂寞的人伤心的歌》 - 1.鼠鼠之歌《寂寞的人伤心的歌》(Av114251985327578,P1).mp3',
+  '/music/🎵 𝑯𝒆𝒂𝒗𝒆𝒏——𝑨𝒗𝒊𝒄𝒊𝒊🎵哈基米音乐 - 1.🎵 𝑯𝒆𝒂𝒗𝒆𝒏——𝑨𝒗𝒊𝒄𝒊𝒊🎵哈基米音乐(Av113647519011570,P1).mp3',
+  '/music/🎵太空曼波 𝑺𝒑𝒂𝒄𝒆 𝑾𝒂𝒍𝒌🎵哈基米纯音乐 - 1.SpaceWalk(Av113557358318790,P1).mp3'
+].map(s => {
+  const parts = s.split('/')
+  const filename = parts.pop()
+  return parts.join('/') + '/' + encodeURIComponent(filename || '')
+}))
 const musicReady = ref(false)
 const musicPaused = ref(true)
 const currentMusic = ref<string | null>(null)
 const currentIndex = ref<number>(-1)
 
 const loadMusicList = async () => {
-  try {
-    const res = await fetch('/api/music/list')
-    if (!res.ok) throw new Error(String(res.status))
-    const data = await res.json()
-    musicList.value = Array.isArray(data.files) ? data.files : []
-  } catch {
-    musicList.value = []
-  }
   musicReady.value = musicList.value.length > 0
 }
 
