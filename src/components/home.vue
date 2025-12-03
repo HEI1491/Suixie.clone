@@ -158,6 +158,7 @@ const musicReady = ref(false)
 const musicPaused = ref(true)
 const currentMusic = ref<string | null>(null)
 const currentIndex = ref<number>(-1)
+const musicProgress = ref(0)
 
 const loadMusicList = async () => {
   musicReady.value = musicList.value.length > 0
@@ -408,7 +409,16 @@ const openHitokoto = () => {
 onMounted(() => {
     if (musicEl.value) {
       try { musicEl.value.preload = 'none' } catch {}
-      musicEl.value.onended = () => { musicPaused.value = true; currentMusic.value = null }
+      musicEl.value.onended = () => {
+        if (!musicPaused.value) playRandomMusic()
+      }
+      musicEl.value.ontimeupdate = () => {
+        if (musicEl.value && musicEl.value.duration) {
+          musicProgress.value = (musicEl.value.currentTime / musicEl.value.duration) * 100
+        } else {
+          musicProgress.value = 0
+        }
+      }
     }
     // 获取一言数据
     fetchHitokoto()
@@ -465,6 +475,9 @@ onUnmounted(() => {
           {{ musicPaused ? '🎵' : '⏸️' }}
         </button>
         <button class="header-btn theme-toggle" @click="nextMusic" title="下一首">⏭️</button>
+        <div class="music-progress-container" v-if="currentMusic && !musicPaused" title="播放进度">
+          <div class="music-progress-bar" :style="{ width: musicProgress + '%' }"></div>
+        </div>
         <template v-if="!isLoggedIn">
           <button class="header-btn login-btn" @click="navigateTo('login')">登录</button>
           <button class="header-btn register-btn" @click="navigateTo('register')">注册</button>
@@ -956,6 +969,24 @@ onUnmounted(() => {
   z-index: 999;
   display: flex;
   align-items: flex-end;
+}
+
+/* 音乐进度条 */
+.music-progress-container {
+  width: 60px;
+  height: 6px;
+  background: var(--body-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  margin-left: 12px;
+  overflow: hidden;
+  align-self: center;
+}
+.music-progress-bar {
+  height: 100%;
+  background: #3b82f6; /* 使用显眼的蓝色，确保对比度 */
+  border-radius: 2px;
+  transition: width 0.2s linear;
 }
 
 /* 随机一言小窗口样式 */
