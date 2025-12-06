@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, onUnmounted, computed } from 'vue'
+import { onMounted, ref, onUnmounted, computed, inject } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTheme } from '@/composables/useTheme.js'
 import { API_DEFAULTS } from '@/core/constants.js'
@@ -10,10 +10,27 @@ const { themePreference, resolvedTheme, themeToggleLabel, themeIcon, cycleThemeP
 const showHitokoto = ref(true) // 控制一言窗口显示
 const hitokotoCollapsed = ref(false) // 控制一言窗口是否收纳于左侧
 
+// 注入全局音乐控制（提供安全默认值，防止注入失败导致页面逻辑中断）
+const musicCtx = inject('music', {
+  musicPaused: ref(true),
+  currentMusic: ref(null as string | null),
+  musicProgress: ref(0),
+  toggleMusic: async () => {},
+  nextMusic: async () => {}
+}) as {
+  musicPaused: ReturnType<typeof ref<boolean>>,
+  currentMusic: ReturnType<typeof ref<string | null>>,
+  musicProgress: ReturnType<typeof ref<number>>,
+  toggleMusic: () => Promise<void> | void,
+  nextMusic: () => Promise<void> | void
+}
+const { musicPaused, currentMusic, musicProgress, toggleMusic, nextMusic } = musicCtx
+
 // 服务器状态相关
 const statusUrls = [
-  (typeof window !== 'undefined' ? window.location.origin : '') + '/api/status',
-  (typeof window !== 'undefined' ? window.location.origin : '') + '/status'
+  (typeof window !== 'undefined' ? window.location.origin : '') + '/status',
+  // 移除 404 的 /api/status
+  // (typeof window !== 'undefined' ? window.location.origin : '') + '/api/status'
 ]
 const servers = ref([
   { id: 1, name: '幽柠之域', url: statusUrls[0], status: null, expanded: false, mapExpanded: false }
@@ -135,69 +152,15 @@ const playEasterEgg = () => {
   }
 }
 
-const musicEl = ref<HTMLAudioElement | null>(null)
-const musicList = ref<string[]>([
-  '/music/偷吃の小曲——曼波、那咩、有时哈基米 - 1.偷吃の小曲——曼波、那咩、有时哈基米(Av114642844131180,P1).mp3',
-  '/music/冬 の 哈 - 1.冬 の 哈(Av115492157130042,P1).mp3',
-  '/music/哈基山的基米美如水啊.mp3',
-  '/music/哈基米Phonk音乐之This Feeling完整版 - 1.哈基米Phonk音乐之This Feeling完整版(Av112893198600841,P1).mp3',
-  '/music/哈基米音乐之 Cure for 咪 （完整版） - 1.哈基米音乐之 Cure for 咪 （完整版）(Av114345283490381,P1).mp3',
-  '/music/哈基米：Lifeline.mp3',
-  '/music/哈基米：🎵Pneumatic Tokyo🎵 - 1.哈基米：🎵Pneumatic Tokyo🎵(Av114907420824236,P1).mp3',
-  '/music/无基区🎵完整版 - 1.无基区🎵完整版(Av114707721623377,P1).mp3',
-  '/music/曼波FM之《DEAD 基米 INSIDE》 - 1.lv_0_20250409142801(Av114306595163027,P1).mp3',
-  '/music/鼠鼠之歌《寂寞的人伤心的歌》 - 1.鼠鼠之歌《寂寞的人伤心的歌》(Av114251985327578,P1).mp3',
-  '/music/🎵 𝑯𝒆𝒂𝒗𝒆𝒏——𝑨𝒗𝒊𝒄𝒊𝒊🎵哈基米音乐 - 1.🎵 𝑯𝒆𝒂𝒗𝒆𝒏——𝑨𝒗𝒊𝒄𝒊𝒊🎵哈基米音乐(Av113647519011570,P1).mp3',
-  '/music/🎵太空曼波 𝑺𝒑𝒂𝒄𝒆 𝑾𝒂𝒍𝒌🎵哈基米纯音乐 - 1.SpaceWalk(Av113557358318790,P1).mp3'
-].map(s => {
-  const parts = s.split('/')
-  const filename = parts.pop()
-  return parts.join('/') + '/' + encodeURIComponent(filename || '')
-}))
-const musicReady = ref(false)
-const musicPaused = ref(true)
-const currentMusic = ref<string | null>(null)
-const currentIndex = ref<number>(-1)
-const musicProgress = ref(0)
-
-const loadMusicList = async () => {
-  musicReady.value = musicList.value.length > 0
-}
-
-const playRandomMusic = async () => {
-  if (!musicReady.value) await loadMusicList()
-  if (!musicList.value.length || !musicEl.value) return
-  const idx = Math.floor(Math.random() * musicList.value.length)
-  const url = musicList.value[idx]
-  currentIndex.value = idx
-  currentMusic.value = url
-  try { musicEl.value.src = url } catch {}
-  try { await musicEl.value.play(); musicPaused.value = false } catch { musicPaused.value = true }
-}
-
-const toggleMusic = async () => {
-  if (!musicEl.value || (musicPaused.value && !currentMusic.value)) {
-    await playRandomMusic()
-    return
+// 触发高速旋转特效
+const triggerSpinEffect = () => {
+  const appEl = document.getElementById('app')
+  if (appEl) {
+    appEl.style.transition = 'transform 1s ease-in'
+    // 强制重绘
+    void appEl.offsetWidth
+    appEl.classList.add('super-spin')
   }
-  if (!musicPaused.value && musicEl.value) {
-    try { musicEl.value.pause(); musicPaused.value = true } catch {}
-    return
-  }
-  if (musicEl.value && musicPaused.value && currentMusic.value) {
-    try { await musicEl.value.play(); musicPaused.value = false } catch {}
-  }
-}
-
-const nextMusic = async () => {
-  if (!musicReady.value) await loadMusicList()
-  if (!musicList.value.length || !musicEl.value) return
-  const next = (currentIndex.value >= 0 ? (currentIndex.value + 1) : 0) % musicList.value.length
-  currentIndex.value = next
-  const url = musicList.value[next]
-  currentMusic.value = url
-  try { musicEl.value.src = url } catch {}
-  try { await musicEl.value.play(); musicPaused.value = false } catch { musicPaused.value = true }
 }
 
 // 解析服务器info字符串
@@ -298,6 +261,26 @@ const parseServerInfo = (infoString) => {
 
 // 获取服务器状态
 const fetchServerStatus = async (server) => {
+  // 优先尝试通过 mindustry.icu 直接获取状态
+  // 修正：使用 /status 而不是 /api/status
+  const directUrl = 'https://mindustry.icu/status';
+  
+  try {
+    const response = await fetch(directUrl);
+    if (response.ok) {
+      const data = await response.json();
+      if (data.info) {
+        server.status = parseServerInfo(data.info);
+      } else {
+        server.status = data;
+      }
+      server.url = directUrl;
+      return;
+    }
+  } catch (e) {
+    console.warn('Direct fetch failed, falling back to proxy urls', e);
+  }
+
   if (!server.url) {
     server.status = { online: false, message: '未配置服务器地址' }
     return
@@ -319,11 +302,13 @@ const fetchServerStatus = async (server) => {
   server.status = { online: false, message: '无法连接到服务器' }
 }
 
-const fetchServerStatusRetry = async (server, attempts = 5, delay = 11) => {
+const fetchServerStatusRetry = async (server, attempts = 5, delay = 500) => {
   for (let i = 0; i < attempts; i++) {
     await fetchServerStatus(server)
     if (server.status && server.status.online) return
-    await new Promise(r => setTimeout(r, delay))
+    // 增加延迟，每次重试等待时间稍长，避免请求过于密集
+    // 第一次等待500ms，第二次等待1000ms，以此类推
+    await new Promise(r => setTimeout(r, delay * (i + 1)))
   }
 }
 
@@ -428,7 +413,7 @@ onMounted(() => {
     
     // 获取神人榜
     fetchShenrenList()
-    loadMusicList()
+    // loadMusicList() // 移至 App.vue
     syncAuth()
     const onStorage = (e: StorageEvent) => {
       if (e.key === tokenKey) syncAuth()
@@ -450,8 +435,8 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  try { musicEl.value?.pause() } catch {}
-  musicEl.value = null
+  // try { musicEl.value?.pause() } catch {} // 移至 App.vue
+  // musicEl.value = null
 })
 
 </script>
@@ -489,7 +474,7 @@ onUnmounted(() => {
       </div>
       <div v-if="!isLoggedIn" class="login-hint-art">因反向代理不稳定，登录失败请重试</div>
     </header>
-    <audio ref="musicEl" style="display:none"></audio>
+    <!-- <audio ref="musicEl" style="display:none"></audio> --> <!-- 移至 App.vue -->
     
     <!-- 主要内容区域 -->
     <main class="main-content">
@@ -503,6 +488,14 @@ onUnmounted(() => {
         >
           <div class="feature-icon">{{ feature.icon }}</div>
           <div class="feature-title">{{ feature.title }}</div>
+        </button>
+      </div>
+      
+      <!-- 独立按钮区域：千万别点 -->
+      <div class="danger-zone">
+        <button class="danger-spin-btn" @click="triggerSpinEffect">
+          <span class="danger-icon">⚠️</span>
+          <span class="danger-text">千万别点</span>
         </button>
       </div>
       
@@ -958,6 +951,42 @@ onUnmounted(() => {
   font-weight: 500;
   margin: 0;
   color: var(--text-primary);
+}
+
+/* 独立危险按钮区域 */
+.danger-zone {
+  margin: 30px 0;
+  display: flex;
+  justify-content: center;
+}
+
+.danger-spin-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #ff416c, #ff4b2b);
+  border: none;
+  border-radius: 50px;
+  color: white;
+  font-weight: bold;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 15px rgba(255, 75, 43, 0.3);
+}
+
+.danger-spin-btn:hover {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 6px 20px rgba(255, 75, 43, 0.4);
+}
+
+.danger-spin-btn:active {
+  transform: translateY(1px);
+}
+
+.danger-icon {
+  font-size: 1.2rem;
 }
 
 /* 一言容器 - 用于控制整体布局 */
