@@ -750,8 +750,8 @@ onUnmounted(() => {
 
 /* 全局样式 */
 .home-container {
-  height: 100vh;
-  overflow: hidden; /* 防止页面滚动 */
+  min-height: 100vh;
+  overflow-x: hidden; /* 防止页面滚动 */
   background: var(--body-bg);
   padding: 80px 20px 20px;
   transition: background var(--transition-slow), color var(--transition-normal);
@@ -899,8 +899,7 @@ onUnmounted(() => {
   max-width: 980px;
   margin: 0 auto;
   padding: 20px 0;
-  height: calc(100vh - 120px); /* 计算内容区域高度，确保不超出视口 */
-  overflow-y: hidden; /* 取消外层滚动 */
+  min-height: calc(100vh - 120px); /* 计算内容区域高度，确保不超出视口 */
   box-sizing: border-box;
 }
 

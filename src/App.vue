@@ -1,6 +1,8 @@
 <script>
 // 根组件 - 应用程序的入口组件
 //import debug from './components/debug.vue';
+import BeianFooter from './components/BeianFooter.vue';
+
 export default {
   name: 'App',  // 组件名称
   data(){
@@ -13,6 +15,7 @@ export default {
   },
   components: {
     //debug  // 调试用组件（当前已注释）
+    BeianFooter
   },
 }
 </script>
