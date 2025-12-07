@@ -1,8 +1,8 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, onBeforeUnmount } from 'vue'
 import { useApi } from '@/plugins/api.js'
 import { useTheme } from '@/composables/useTheme.js'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Calendar, Medal, Coin, Trophy, Refresh, Star } from '@element-plus/icons-vue'
 
 const { themeToggleLabel, themeIcon, cycleThemePreference } = useTheme()
@@ -13,6 +13,7 @@ const signStatus = ref('loading') // loading, success, signed, error
 const signGain = ref(null)
 const qq = ref('')
 const loading = ref(false)
+const audio = ref(null)
 
 const isSignedToday = computed(() => {
   if (!lastSignDate.value) return false
@@ -30,6 +31,13 @@ onMounted(() => {
     signStatus.value = 'signed'
   } else {
     handleSign()
+  }
+})
+
+onBeforeUnmount(() => {
+  if (audio.value) {
+    audio.value.pause()
+    audio.value = null
   }
 })
 
@@ -66,6 +74,15 @@ const handleSign = async () => {
         signGain.value = null // Unknown gain
       }
       
+      if (signGain.value !== null && signGain.value < 20) {
+        const a = new Audio('/力竭.mp3')
+        a.play().catch(e => console.error('Audio play failed:', e))
+        audio.value = a
+        ElMessageBox.alert('签力竭了', '提示', {
+          confirmButtonText: '确定'
+        })
+      }
+
       completeSign()
       return
     } catch (e) {
