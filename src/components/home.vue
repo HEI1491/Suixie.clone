@@ -90,9 +90,12 @@ const parseJwtSub = (token: string) => {
   try {
     const parts = token.split('.')
     if (parts.length !== 3) return null
-    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')))
-    return payload.sub ?? null
-  } catch {
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+    const jsonPayload = decodeURIComponent(escape(window.atob(base64)))
+    const payload = JSON.parse(jsonPayload)
+    return payload.sub || payload.id || payload.userId || payload.username || payload.name || null
+  } catch (e) {
+    console.error('Token parsing failed', e)
     return null
   }
 }

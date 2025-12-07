@@ -50,7 +50,8 @@ export function createContentService({ http }) {
       });
       const text = String(payload?.result || '');
       const pick = (label) => {
-        const re = new RegExp(label + '\\[]:(.*)');
+        const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const re = new RegExp(escapedLabel + '\\[]:(.*)');
         const m = text.match(re);
         return m ? m[1].trim() : '';
       };

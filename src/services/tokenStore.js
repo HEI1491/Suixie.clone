@@ -46,14 +46,7 @@ export function createTokenStore(storageKey) {
           }
         }
 
-        // 如果都没有，使用默认修复 Token (用户提供的)
-        if (!token) {
-          token = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIyOTUiLCJpYXQiOjE3NjUwNzc5ODIsImV4cCI6MTc2NTY4Mjc4Mn0.kW3oBPVjnZfnluhQ4kX0UWO9DHI5MefQr8fVXNWOpHQ';
-          // 写入存储和 Cookie
-          localStorage.setItem(key, token);
-          document.cookie = `jwt=${token}; path=/; max-age=2592000; SameSite=Lax`;
-        }
-
+        // 如果都没有，返回 null
         return token;
       });
     },

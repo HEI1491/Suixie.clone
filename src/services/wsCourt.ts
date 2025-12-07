@@ -1,4 +1,3 @@
-export type Role = '法官' | '原告' | '被告' | '观众'
 export type Role = '法官' | '原告' | '被告' | '观众' | '证人'
 export type Visibility = '公开' | '私有'
 
