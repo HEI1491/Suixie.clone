@@ -1,19 +1,18 @@
 <script setup>
-import { ref, reactive, computed, onBeforeUnmount } from 'vue';
+import { ref, reactive, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import { useTheme } from '../composables/useTheme.js';
 import { useApi } from '@/plugins/api.js';
-import { useSnackbar } from '../composables/useSnackbar.js';
-import { API_DEFAULTS } from '@/core/constants.js';
+import { useTheme } from '@/composables/useTheme.js';
+import { ElMessage } from 'element-plus';
+import { User, Lock, Message, Iphone } from '@element-plus/icons-vue';
 
-// 主题、路由、接口、消息等全局依赖
-const { themeToggleLabel, themeIcon, cycleThemePreference } = useTheme();
 const router = useRouter();
 const api = useApi();
-const { showMessage } = useSnackbar();
+const { themeToggleLabel, themeIcon, cycleThemePreference } = useTheme();
 
-// 注册进度、表单字段与界面控制状态
-const currentStep = ref(0);
+const activeStep = ref(0);
+const loading = ref(false);
+
 const formData = reactive({
   account: '',
   password: '',
@@ -22,463 +21,266 @@ const formData = reactive({
   verificationCode: '',
   qqVerificationCode: ''
 });
-// 动画、倒计时以及加载/显示控制
-const animationClass = ref('');
+
 const countdown = ref(0);
 const qqCountdown = ref(0);
 let timer = null;
 let qqTimer = null;
-const showPassword = ref(false);
-const isLoading = ref(false);
 
-// 是否满足基础字段已填（控制下一步按钮）
-const isFormValid = computed(() => {
-  return formData.account && formData.password && formData.mail;
-});
-
-// 是否需要进入 QQ 验证流程
-const showQqVerification = computed(() => {
-  return formData.qq && formData.qq.trim() !== '';
-});
-
-// 基础邮箱格式校验
-const validateEmail = (email) => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
+const startCountdown = () => {
+  countdown.value = 60;
+  if (timer) clearInterval(timer);
+  timer = setInterval(() => {
+    countdown.value--;
+    if (countdown.value <= 0) clearInterval(timer);
+  }, 1000);
 };
 
-const validateQQ = (v) => /^\d{5,}$/.test(String(v || '').trim());
+const startQqCountdown = () => {
+  qqCountdown.value = 60;
+  if (qqTimer) clearInterval(qqTimer);
+  qqTimer = setInterval(() => {
+    qqCountdown.value--;
+    if (qqCountdown.value <= 0) clearInterval(qqTimer);
+  }, 1000);
+};
 
-// 发送邮箱验证码并启动 60s 倒计时
 const sendVerificationCode = async () => {
   if (countdown.value > 0) return;
-  if (!validateEmail(formData.mail)) {
-    showMessage('\u90ae\u7bb1\u683c\u5f0f\u4e0d\u6b63\u786e', { type: 'warning' });
+  if (!formData.mail) {
+    ElMessage.warning('请输入邮箱');
     return;
   }
-  isLoading.value = true;
   try {
     await api.sendCode(formData.mail);
-    countdown.value = 60;
-    if (timer) {
-      clearInterval(timer);
-    }
-    timer = window.setInterval(() => {
-      countdown.value--;
-      if (countdown.value <= 0) {
-        clearInterval(timer);
-      }
-    }, 1000);
-    showMessage('\u9a8c\u8bc1\u7801\u5df2\u53d1\u9001\uff0c\u8bf7\u67e5\u6536\u90ae\u7bb1', { type: 'success' });
+    startCountdown();
+    ElMessage.success('验证码已发送至邮箱');
   } catch (error) {
-    showMessage(error.reason || error.message || '\u53d1\u9001\u9a8c\u8bc1\u7801\u5931\u8d25', { type: 'error' });
-  } finally {
-    isLoading.value = false;
+    ElMessage.error(error.reason || error.message || '发送失败');
   }
 };
 
-// 发送 QQ 绑定码
 const sendQqVerificationCode = async () => {
   if (qqCountdown.value > 0) return;
-  if (!validateQQ(formData.qq)) {
-    showMessage('\u8bf7\u5148\u586b\u5199QQ\u53f7', { type: 'warning' });
+  if (!formData.qq) {
+    ElMessage.warning('请输入QQ号');
     return;
   }
-  isLoading.value = true;
   try {
-    await api.sendQQBindCode(formData.qq.trim());
-    qqCountdown.value = 60;
-    if (qqTimer) {
-      clearInterval(qqTimer);
-    }
-    qqTimer = window.setInterval(() => {
-      qqCountdown.value--;
-      if (qqCountdown.value <= 0) {
-        clearInterval(qqTimer);
-      }
-    }, 1000);
-    showMessage('\u7ed1\u5b9a\u7801\u5df2\u53d1\u9001\u81f3QQ\u90ae\u7bb1\uff0c\u8bf7\u67e5\u6536', { type: 'success' });
+    await api.sendQQBindCode(formData.qq);
+    startQqCountdown();
+    ElMessage.success('验证码已发送至QQ邮箱');
   } catch (error) {
-    showMessage(error.reason || error.message || '\u53d1\u9001QQ\u7ed1\u5b9a\u7801\u5931\u8d25', { type: 'error' });
-  } finally {
-    isLoading.value = false;
+    ElMessage.error(error.reason || error.message || '发送失败');
   }
 };
 
-// 控制下一步转场及阶段性逻辑
 const nextStep = () => {
-  if (currentStep.value === 0) {
-    if (!formData.account) {
-      showMessage('请输入账号')
-      return
-    }
-  }
-  if (currentStep.value === 2) {
-    if (!validateEmail(formData.mail)) {
-      showMessage('邮箱格式不正确');
+  if (activeStep.value === 0) {
+    if (!formData.account || !formData.password) {
+      ElMessage.warning('请填写完整账号信息');
       return;
     }
-    sendVerificationCode();
-  }
-  if (currentStep.value === 3) {
-    if (!formData.verificationCode || !/^\d+$/.test(String(formData.verificationCode))) {
-      showMessage('请输入邮箱验证码');
+  } else if (activeStep.value === 1) {
+    if (!formData.mail) {
+      ElMessage.warning('请填写邮箱');
       return;
     }
+    // Auto send code if not sent? Maybe user prefers manual
   }
-  // 临时关闭QQ绑定功能
-  if (currentStep.value === 4) {
-    // 跳过QQ输入和验证，直接到确认页面
-    currentStep.value = 6;
-    return;
-  }
-
-  if (currentStep.value === 6) {
-    handleSubmit();
-    return;
-  }
-  if (currentStep.value < 7) {
-    animationClass.value = 'slide-out';
-    setTimeout(() => {
-      currentStep.value++;
-      // 如果是步骤3(邮箱验证)完成后，直接跳过步骤4(QQ输入)和5(QQ验证)，去步骤6(确认)
-      if (currentStep.value === 4) {
-        currentStep.value = 6;
-      }
-      animationClass.value = 'slide-in';
-      setTimeout(() => {
-        animationClass.value = '';
-      }, 300);
-    }, 300);
-  }
+  activeStep.value++;
 };
 
-// 处理返回上一步及特殊跳转
 const prevStep = () => {
-  if (currentStep.value === 0) {
-    router.push('/');
-    return;
-  }
-  if (currentStep.value === 7) {
-    currentStep.value = 6;
-    return;
-  }
-  if (currentStep.value === 6) {
-    // 从确认页返回，直接回步骤3(邮箱验证)
-    currentStep.value = 3;
-    return;
-  }
-  if (currentStep.value === 5) {
-    currentStep.value = 4;
-    return;
-  }
-  if (currentStep.value > 0) {
-    animationClass.value = 'slide-out-back';
-    setTimeout(() => {
-      currentStep.value--;
-      animationClass.value = 'slide-in-back';
-      setTimeout(() => {
-        animationClass.value = '';
-      }, 300);
-    }, 300);
-  } else {
-    showMessage('没有上一个页面啦！');
-  }
+  activeStep.value--;
 };
 
-// 汇总数据后调用注册接口
-const handleSubmit = async () => {
-  isLoading.value = true;
+const handleRegister = async () => {
+  if (!formData.verificationCode) {
+    ElMessage.warning('请输入邮箱验证码');
+    return;
+  }
+  if (formData.qq && !formData.qqVerificationCode) {
+    ElMessage.warning('请输入QQ验证码');
+    return;
+  }
+
+  loading.value = true;
   try {
-    await api.register(
-      formData.account,
-      formData.password,
-      formData.verificationCode
-    );
-    try { localStorage.setItem(API_DEFAULTS.loginTimestampStorageKey, String(Date.now())); } catch {}
-    try { localStorage.setItem(API_DEFAULTS.displayNameStorageKey, formData.account); } catch {}
-    try {
-      if (validateQQ(formData.qq) && formData.qqVerificationCode?.trim()) {
-        try {
-          const r = await api.bindQQ(String(formData.qq).trim(), formData.qqVerificationCode.trim());
-          const bound = r?.qq ? String(r.qq) : '';
-          if (bound && bound !== String(formData.qq).trim()) {
-            showMessage('\u7ed1\u5b9a\u6210\u529f\uff0c\u4f46QQ\u53f7\u4e0e\u8f93\u5165\u4e0d\u4e00\u81f4', { type: 'warning' });
-          } else {
-            showMessage('\u7ed1\u5b9aQQ\u6210\u529f', { type: 'success' });
-          }
-        } catch {
-          const res = await api.verifyQQBind(formData.qqVerificationCode.trim());
-          const bound = res?.qq ? String(res.qq) : '';
-          if (bound && bound !== String(formData.qq).trim()) {
-            showMessage('\u7ed1\u5b9a\u6210\u529f\uff0c\u4f46QQ\u53f7\u4e0e\u8f93\u5165\u4e0d\u4e00\u81f4', { type: 'warning' });
-          } else {
-            showMessage('\u7ed1\u5b9aQQ\u6210\u529f', { type: 'success' });
-          }
-        }
+    // Register
+    const regRes = await api.register(formData.account, formData.password, formData.mail, formData.verificationCode);
+    if (regRes.status !== 200) throw new Error('注册失败');
+
+    // Login to bind QQ
+    if (formData.qq) {
+      try {
+        await api.login(formData.account, formData.password);
+        await api.bindQQ(formData.qq, formData.qqVerificationCode);
+        ElMessage.success('注册并绑定QQ成功');
+      } catch (e) {
+        ElMessage.warning('注册成功，但绑定QQ失败: ' + (e.reason || e.message));
       }
-    } catch (e) {
-      const reason = e?.reason || e?.message || '';
-      showMessage(reason || '\u7ed1\u5b9aQQ\u5931\u8d25', { type: 'error' });
+    } else {
+        ElMessage.success('注册成功');
     }
-    showMessage('\u6ce8\u518c\u6210\u529f！', { type: 'success' });
-    currentStep.value = 7;
+    
+    activeStep.value = 3; // Done
   } catch (error) {
-    const reason = error.reason || error.message || '\u6ce8\u518c\u5931\u8d25';
-    showMessage(`\u6ce8\u518c\u5931\u8d25: ${reason}`, { type: 'error' });
+    ElMessage.error(error.reason || error.message || '注册失败');
   } finally {
-    isLoading.value = false;
+    loading.value = false;
   }
 };
 
-// 保持邮箱验证码输入为纯数字
-const onVerificationCodeInput = (e) => {
-  formData.verificationCode = e.target.value.replace(/\D/g, '');
-};
-
-// 保持 QQ 验证码输入为纯数字
-const onQqVerificationCodeInput = (e) => {
-  formData.qqVerificationCode = e.target.value.replace(/\D/g, '');
-};
-
-const onQqInput = (e) => {
-  formData.qq = e.target.value.replace(/\D/g, '');
-};
-
-// 切换密码显示状态
-const togglePasswordVisibility = () => {
-  showPassword.value = !showPassword.value;
-};
-
-// 提示用户 QQ 功能暂不可用
-const showQqDisabledMessage = () => {
-  showMessage('存在未知问题，该功能已禁用，请直接下一步');
-};
-
-// 离开组件时清除定时器，避免内存泄漏
-onBeforeUnmount(() => {
-  if (timer) clearInterval(timer);
-  if (qqTimer) clearInterval(qqTimer);
-});
+const goHome = () => router.push('/');
+const goLogin = () => router.push('/login');
 </script>
 
 <template>
   <div class="register-container">
-    <!-- 主题切换按钮 -->
-    <button
-      class="theme-toggle fixed"
-      @click="cycleThemePreference"
-      :title="themeToggleLabel"
-    >
-      {{ themeIcon }}
-    </button>
-    <div class="progress-bar">
-      <div 
-        class="progress-fill" 
-        :style="{ width: ((currentStep + 1) * (100/8)) + '%' }">
-      </div>
+    <div class="theme-toggle-wrapper">
+       <el-button circle @click="cycleThemePreference" :title="themeToggleLabel">
+          {{ themeIcon }}
+       </el-button>
     </div>
-    
-    <div class="form-container">
-      <!-- 步骤1: 账号 -->
-      <div v-show="currentStep === 0" :class="['form-step', animationClass]">
-        <h2>创建账户</h2>
-        <div class="input-group">
-          <label for="account">账号 *</label>
-          <input 
-            type="text" 
-            id="account" 
-            v-model="formData.account" 
-            placeholder="请输入账号"
-            required
-          />
+
+    <el-card class="register-card">
+      <template #header>
+        <div class="register-header">
+          <h2>注册账号</h2>
+          <el-steps :active="activeStep" finish-status="success" align-center class="steps">
+            <el-step title="账号" />
+            <el-step title="联系方式" />
+            <el-step title="验证" />
+            <el-step title="完成" />
+          </el-steps>
         </div>
-        <div class="button-group">
-          <button class="btn btn-prev" @click="prevStep">回到首页</button>
-          <button class="btn btn-next" @click="nextStep" :disabled="!formData.account">
-            下一步
-          </button>
-        </div>
-      </div>
-      
-      <!-- 步骤2: 密码 -->
-      <div v-show="currentStep === 1" :class="['form-step', animationClass]">
-        <h2>设置密码</h2>
-        <div class="input-group">
-          <label for="password">密码 *</label>
-          <input 
-            type="password" 
-            id="password" 
-            v-model="formData.password" 
-            placeholder="请输入密码(至少8位)"
-            required
-          />
-          <p v-if="formData.password && formData.password.length < 8" class="password-hint">
-            密码长度至少8位
-          </p>
-        </div>
-        <div class="button-group">
-          <button class="btn btn-prev" @click="prevStep">上一步</button>
-          <button class="btn btn-next" @click="nextStep" :disabled="!formData.password || formData.password.length < 8">
-            下一步
-          </button>
-        </div>
-      </div>
-      
-      <!-- 步骤3: 邮箱 -->
-      <div v-show="currentStep === 2" :class="['form-step', animationClass]">
-        <h2>邮箱地址</h2>
-        <div class="input-group">
-          <label for="mail">邮箱 *</label>
-          <input 
-            type="email" 
-            id="mail" 
-            v-model="formData.mail" 
-            placeholder="请输入邮箱"
-            required
-          />
-        </div>
-        <div class="button-group">
-          <button class="btn btn-prev" @click="prevStep">上一步</button>
-          <button class="btn btn-next" @click="nextStep" :disabled="!formData.mail">
-            下一步
-          </button>
-        </div>
-      </div>
-      
-      <!-- 步骤4: 验证码 -->
-      <div v-show="currentStep === 3" :class="['form-step', animationClass]">
-        <h2>邮箱验证</h2>
-      <div class="input-group">
-          <label for="verificationCode">验证码 *</label>
-          <input 
-            type="text" 
-            id="verificationCode" 
-            v-model="formData.verificationCode" 
-            placeholder="请输入验证码"
-            required
-            @input="onVerificationCodeInput"
-          />
-          <div class="verification-actions">
-            <p class="verification-hint">验证码已发送至您的邮箱，请查收</p>
-            <button 
-              class="btn-resend" 
-              @click="sendVerificationCode" 
-              :disabled="countdown > 0">
-              {{ countdown > 0 ? `重新发送(${countdown}s)` : '重新发送' }}
-            </button>
+      </template>
+
+      <div class="step-content">
+        <!-- Step 0: Account Info -->
+        <el-form v-if="activeStep === 0" :model="formData" label-position="top">
+          <el-form-item label="账号" required>
+            <el-input v-model="formData.account" placeholder="请输入账号" :prefix-icon="User" />
+          </el-form-item>
+          <el-form-item label="密码" required>
+            <el-input v-model="formData.password" type="password" placeholder="请输入密码" :prefix-icon="Lock" show-password />
+          </el-form-item>
+          <div class="step-actions">
+            <el-button @click="goHome">返回首页</el-button>
+            <el-button type="primary" @click="nextStep">下一步</el-button>
           </div>
-        </div>
-        <div class="button-group">
-          <button class="btn btn-prev" @click="prevStep">上一步</button>
-          <button class="btn btn-next" @click="nextStep" :disabled="!formData.verificationCode">
-            下一步
-          </button>
+           <div class="form-footer">
+            <router-link to="/login">已有账号？去登录</router-link>
+          </div>
+        </el-form>
+
+        <!-- Step 1: Contact Info -->
+        <el-form v-if="activeStep === 1" :model="formData" label-position="top">
+          <el-form-item label="邮箱" required>
+            <el-input v-model="formData.mail" placeholder="请输入邮箱" :prefix-icon="Message" />
+          </el-form-item>
+          <el-form-item label="QQ号 (选填)">
+            <el-input v-model="formData.qq" placeholder="请输入QQ号" :prefix-icon="Iphone" />
+          </el-form-item>
+          <div class="step-actions">
+            <el-button @click="prevStep">上一步</el-button>
+            <el-button type="primary" @click="nextStep">下一步</el-button>
+          </div>
+        </el-form>
+
+        <!-- Step 2: Verification -->
+        <el-form v-if="activeStep === 2" :model="formData" label-position="top">
+          <el-form-item label="邮箱验证码" required>
+            <el-input v-model="formData.verificationCode" placeholder="请输入邮箱验证码">
+              <template #append>
+                <el-button @click="sendVerificationCode" :disabled="countdown > 0">
+                  {{ countdown > 0 ? `${countdown}s` : '发送验证码' }}
+                </el-button>
+              </template>
+            </el-input>
+          </el-form-item>
+
+          <el-form-item v-if="formData.qq" label="QQ验证码" required>
+            <el-input v-model="formData.qqVerificationCode" placeholder="请输入QQ验证码">
+              <template #append>
+                <el-button @click="sendQqVerificationCode" :disabled="qqCountdown > 0">
+                  {{ qqCountdown > 0 ? `${qqCountdown}s` : '发送验证码' }}
+                </el-button>
+              </template>
+            </el-input>
+          </el-form-item>
+
+          <div class="step-actions">
+            <el-button @click="prevStep">上一步</el-button>
+            <el-button type="primary" @click="handleRegister" :loading="loading">注册</el-button>
+          </div>
+        </el-form>
+
+        <!-- Step 3: Success -->
+        <div v-if="activeStep === 3" class="success-step">
+          <el-result
+            icon="success"
+            title="注册成功"
+            sub-title="欢迎加入幽柠之域"
+          >
+            <template #extra>
+              <el-button type="primary" @click="goLogin">去登录</el-button>
+              <el-button @click="goHome">返回首页</el-button>
+            </template>
+          </el-result>
         </div>
       </div>
-      
-      <!-- 步骤5: QQ -->
-      <div v-show="currentStep === 4" :class="['form-step', animationClass]">
-        <h2>可选信息</h2>
-        <div class="input-group">
-          <label for="qq">QQ (可选)</label>
-          <input 
-            type="text" 
-            id="qq" 
-            v-model="formData.qq" 
-            placeholder="请输入QQ号"
-            @input="onQqInput"
-          />
-        </div>
-        <div class="button-group">
-          <button class="btn btn-prev" @click="prevStep">上一步</button>
-          <button class="btn btn-next" @click="nextStep" :disabled="showQqVerification && !validateQQ(formData.qq)">
-            下一步
-          </button>
-        </div>
-      </div>
-      
-      <!-- 步骤6: QQ验证 -->
-      <div v-show="currentStep === 5" :class="['form-step', animationClass]" v-if="showQqVerification">
-        <h2>QQ邮箱验证</h2>
-        <div class="input-group">
-          <label for="qqVerificationCode">验证码 *</label>
-          <input 
-            type="text" 
-            id="qqVerificationCode" 
-            v-model="formData.qqVerificationCode" 
-            placeholder="请输入验证码"
-            required
-            @input="onQqVerificationCodeInput"
-          />
-          <div class="verification-actions">
-            <p class="verification-hint">绑定码已发送至您的QQ邮箱({{ formData.qq }}@qq.com)，请查收</p>
-            <button 
-              class="btn-resend" 
-              @click="sendQqVerificationCode" 
-              :disabled="qqCountdown > 0">
-              {{ qqCountdown > 0 ? `重新发送(${qqCountdown}s)` : '重新发送' }}
-            </button>
-          </div>
-        </div>
-        <div class="button-group">
-          <button class="btn btn-prev" @click="prevStep">上一步</button>
-          <button class="btn btn-next" @click="nextStep" :disabled="!formData.qqVerificationCode">
-            下一步
-          </button>
-        </div>
-      </div>
-      
-      <!-- 步骤6: 信息确认页面 -->
-      <div v-show="currentStep === 6" :class="['form-step', animationClass]">
-        <h2>请再次确认您的信息</h2>
-        <div class="confirmation-info">
-          <div class="info-item">
-            <span class="info-label">账号:</span>
-            <span class="info-value">{{ formData.account }}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">密码:</span>
-            <span class="info-value">
-              {{ showPassword ? formData.password : '•'.repeat(formData.password.length || 4) }}
-              <button @click="togglePasswordVisibility" class="toggle-password-btn">
-                {{ showPassword ? '隐藏' : '显示' }}
-              </button>
-            </span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">邮箱:</span>
-            <span class="info-value">{{ formData.mail }}</span>
-          </div>
-          <div class="info-item" v-if="formData.qq">
-            <span class="info-label">QQ:</span>
-            <span class="info-value">{{ formData.qq }}</span>
-          </div>
-        </div>
-        <div class="button-group">
-          <button class="btn btn-prev" @click="prevStep">上一步</button>
-          <button class="btn btn-submit" @click="nextStep">
-            确认并提交
-          </button>
-        </div>
-      </div>
-      
-      <!-- 步骤7: 完成注册 -->
-      <div v-show="currentStep === 7" :class="['form-step', animationClass]">
-        <h2>注册完成</h2>
-        <div class="completion-message">
-          <p>账号注册成功！祝您游戏愉快</p>
-          <p>账号: {{ formData.account }}</p>
-        </div>
-        <div class="button-group">
-          <button class="btn btn-submit" @click="handleSubmit">
-            完成注册
-          </button>
-        </div>
-      </div>
-      
-      <!-- 步骤7: 完成注册 (QQ验证后) -->
-    </div>
+    </el-card>
   </div>
 </template>
-<style scoped src="/src/assets/register.css"></style>
+
+<style scoped>
+.register-container {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: var(--bg-color, #f0f2f5);
+  position: relative;
+  padding: 20px;
+}
+
+.theme-toggle-wrapper {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+}
+
+.register-card {
+  width: 100%;
+  max-width: 600px;
+}
+
+.register-header {
+  text-align: center;
+}
+
+.steps {
+  margin-top: 20px;
+}
+
+.step-content {
+  padding: 20px 0;
+}
+
+.step-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+}
+
+.form-footer {
+  text-align: center;
+  margin-top: 15px;
+}
+
+.success-step {
+  text-align: center;
+}
+</style>

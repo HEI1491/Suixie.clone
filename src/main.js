@@ -2,10 +2,12 @@
 
 // 引入Vue核心函数和组件
 import { createApp } from 'vue';
+import { createPinia } from 'pinia';
 import App from './App.vue';                    // 根组件
 import router from './router/index.js';         // 路由配置
 import { createApiPlugin } from './plugins/api.js';  // API插件
 import './assets/theme.css';                    // 全局主题样式
+import 'element-plus/dist/index.css'
 
 // 创建API插件实例
 // 从环境变量获取API配置，提供默认值确保开发环境正常运行
@@ -17,6 +19,8 @@ const apiPlugin = createApiPlugin({
 
 // 创建Vue应用实例
 const app = createApp(App);
+// 注册Pinia
+app.use(createPinia());
 // 注册路由插件
 app.use(router);
 // 注册API插件，使所有组件都能访问API客户端
