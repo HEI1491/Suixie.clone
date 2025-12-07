@@ -34,13 +34,23 @@ onMounted(async () => {
   loading.value = true
   error.value = ''
   try {
-    const t = localStorage.getItem(API_DEFAULTS.tokenStorageKey)
+    const t = api.readToken()
     const atStr = localStorage.getItem(API_DEFAULTS.loginTimestampStorageKey)
-    const at = atStr ? parseInt(atStr) : 0
+    let at = atStr ? parseInt(atStr) : 0
+    if (t && !at) {
+        at = Date.now()
+        localStorage.setItem(API_DEFAULTS.loginTimestampStorageKey, at.toString())
+    }
     const expired = !at || Date.now() - at > API_DEFAULTS.loginMaxAgeMs
     isLoggedIn.value = !!t && !expired
     const res = await api.getUserProfile()
     const data = res?.data || {}
+    
+    const newName = data.username || data.nickname || data.qq || data.email
+     if (newName) {
+         localStorage.setItem(API_DEFAULTS.displayNameStorageKey, newName)
+     }
+    
     profile.value = {
       username: data.username || '',
       email: data.email || '',

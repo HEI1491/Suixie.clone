@@ -127,7 +127,12 @@ export function createHttpClient({ baseUrl, apiKey, timeoutMs = 8000 }) {
       });
       headers.set('Accept', 'application/json');
       try {
-        const t = localStorage.getItem(API_DEFAULTS.tokenStorageKey) || '';
+        let t = localStorage.getItem(API_DEFAULTS.tokenStorageKey) || '';
+        // 如果 localStorage 没有，尝试从 Cookie 读取
+        if (!t) {
+          const match = document.cookie.match(new RegExp('(^| )jwt=([^;]+)'));
+          if (match) t = match[2];
+        }
         if (t) headers.set('Authorization', `Bearer ${t}`);
       } catch {}
       // 仅在使用 cors.sh 代理时附加 API 密钥请求头

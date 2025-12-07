@@ -123,8 +123,10 @@ const syncAuth = async () => {
   if (!name && userId.value) {
     try {
       const res = await apiClient.getUserProfile()
-      if (res.data && res.data.username) {
-        name = res.data.username
+      const data = res.data || {}
+      // 优先显示用户名，其次是昵称、QQ、邮箱
+      name = data.username || data.nickname || data.qq || data.email
+      if (name) {
         localStorage.setItem(nameKey, name)
       }
     } catch (e) {
