@@ -133,7 +133,8 @@ export function createHttpClient({ baseUrl, apiKey, timeoutMs = 8000 }) {
           const match = document.cookie.match(new RegExp('(^| )jwt=([^;]+)'));
           if (match) t = match[2];
         }
-        if (t) headers.set('Authorization', `Bearer ${t}`);
+        // 使用小写 'jwt' 以符合用户要求，不再使用 Authorization
+        if (t) headers.set('jwt', `Bearer ${t}`);
       } catch {}
       // 仅在使用 cors.sh 代理时附加 API 密钥请求头
       if (apiKey && normalizedBaseUrl.includes('cors.sh')) {

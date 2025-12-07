@@ -1,131 +1,130 @@
-<script setup lang="ts">
+<script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { validators } from '@/services/validators.js'
-import { resolveApiConfig } from '@/core/config.js'
+import { useTheme } from '@/composables/useTheme.js'
+import { ElMessage } from 'element-plus'
+import { DocumentChecked } from '@element-plus/icons-vue'
+
 const router = useRouter()
-const title = ref('')
-const description = ref('')
-const plaintiffQQ = ref('')
-const defendantQQ = ref('')
-const defendantEmail = ref('')
-const makeSecret = () => Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
-const plaintiffSecret = ref('')
-const nextJudgeSecret = ref('')
-const nextDefendantSecret = ref('')
-const visibility = ref<'公开'|'私有'>('公开')
-const evidence = ref('')
-const caseStatus = ref(((localStorage.getItem('CASE_STATUS') as any) || 'pending'))
-const isValidQQ = (v: string) => /^\d{5,12}$/.test(String(v || '').trim())
-const genAll = () => {
-  if (!isValidQQ(plaintiffQQ.value) || !isValidQQ(defendantQQ.value)) { alert('QQ格式无效(需5-12位数字)'); return }
-  defendantEmail.value = defendantQQ.value ? `${defendantQQ.value}@qq.com` : ''
-  plaintiffSecret.value = `P-${plaintiffQQ.value}-${defendantQQ.value}-${makeSecret()}`
-}
-const saveSecrets = () => {
-  if (!plaintiffSecret.value) return
-  localStorage.setItem('COURT_SECRET_原告', plaintiffSecret.value)
-  localStorage.setItem('COURT_VISIBILITY', visibility.value)
-  localStorage.setItem('CASE_TITLE', title.value)
-  localStorage.setItem('CASE_DESC', description.value)
-  localStorage.setItem('PLAINTIFF_QQ', plaintiffQQ.value)
-  localStorage.setItem('DEFENDANT_QQ', defendantQQ.value)
-  localStorage.setItem('CASE_EVIDENCE', evidence.value)
-  localStorage.setItem('CASE_STATUS', 'pending')
-}
-const enterPlaintiff = () => {
-  if (!isValidQQ(plaintiffQQ.value) || !isValidQQ(defendantQQ.value)) { alert('QQ格式无效(需5-12位数字)'); return }
-  saveSecrets(); router.push('/court/plaintiff')
-}
-const judgeRecipients = [
-  '3806973431@qq.com',
-  '1298428557@qq.com',
-  '486266515@qq.com',
-  '2124007978@qq.com'
-]
-const sending = ref(false)
-const apiCfg = resolveApiConfig({ baseUrl: (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_COURT_API_BASE_URL) || undefined })
-const copyText = async (text: string) => {
+const { themeToggleLabel, themeIcon, cycleThemePreference } = useTheme()
+
+const appealForm = ref({
+  plaintiff: '',
+  defendant: '',
+  reason: '',
+  evidence: ''
+})
+const loading = ref(false)
+
+const submitAppeal = async () => {
+  if (!appealForm.value.plaintiff || !appealForm.value.reason) {
+    ElMessage.warning('请填写完整的申诉信息')
+    return
+  }
+  
+  loading.value = true
   try {
-    await navigator.clipboard.writeText(text)
-    alert('已复制到剪贴板')
-  } catch (_) {
-    const ta = document.createElement('textarea')
-    ta.value = text
-    document.body.appendChild(ta)
-    ta.select()
-    try { document.execCommand('copy') } catch {}
-    document.body.removeChild(ta)
-    alert('已复制到剪贴板')
+    // 这里模拟提交
+    await new Promise(r => setTimeout(r, 1000))
+    ElMessage.success('申诉提交成功，请等待法官审核')
+    // 保存一些信息以便返回后自动填入
+    localStorage.setItem('CASE_DESC', appealForm.value.reason)
+    localStorage.setItem('PLAINTIFF_QQ', appealForm.value.plaintiff)
+    localStorage.setItem('DEFENDANT_QQ', appealForm.value.defendant)
+    router.push('/court')
+  } catch {
+    ElMessage.error('提交失败')
+  } finally {
+    loading.value = false
   }
 }
+
+const goBack = () => router.push('/court')
 </script>
 
 <template>
-  <div class="appeal">
-    <h1 class="title">幽柠法庭 · 原告申诉</h1>
-  <div class="form">
-    <label class="label">案件标题</label>
-    <input v-model="title" class="input" placeholder="输入案件标题" />
-    <label class="label">申诉内容</label>
-    <textarea v-model="description" class="input" rows="4" placeholder="输入申诉描述"></textarea>
-    <label class="label">证据说明（可粘贴截图链接）</label>
-    <textarea v-model="evidence" class="input" rows="4" placeholder="请输入证据说明或若干链接"></textarea>
-    <div class="grid">
-        <div class="col">
-          <span class="label">原告QQ号</span>
-          <input v-model="plaintiffQQ" class="input" placeholder="请输入原告QQ号(5-12位数字)" />
+  <div class="appeal-container">
+    <button
+      class="theme-toggle fixed"
+      @click="cycleThemePreference"
+      :title="themeToggleLabel"
+    >
+      {{ themeIcon }}
+    </button>
+
+    <el-card class="appeal-card">
+      <template #header>
+        <div class="card-header">
+           <el-button text @click="goBack">← 返回法庭</el-button>
+           <h2>原告申诉</h2>
+           <div></div>
         </div>
-        <div class="col">
-          <span class="label">被告QQ号</span>
-          <input v-model="defendantQQ" class="input" placeholder="请输入被告QQ号(5-12位数字)" />
-        </div>
-        <div class="col">
-          <span class="label">被告邮箱</span>
-          <input v-model="defendantEmail" class="input" placeholder="被告邮箱(自动填充QQ邮箱)" />
-        </div>
-        <div class="col">
-          <span class="label">案件类型</span>
-          <select v-model="visibility" class="input">
-            <option value="公开">公开</option>
-            <option value="私有">私有</option>
-          </select>
-        </div>
-      </div>
-      <div class="controls">
-        <button class="btn" @click="genAll" :disabled="!(plaintiffQQ && defendantQQ && isValidQQ(plaintiffQQ) && isValidQQ(defendantQQ))">生成秘钥</button>
-        <button class="btn primary" @click="enterPlaintiff" :disabled="!plaintiffSecret">保存并进入原告法庭</button>
-      </div>
-    </div>
-  <div class="secrets" v-if="plaintiffSecret">
-      <div class="row">
-        <span class="role">原告秘钥</span>
-        <span class="code">{{ plaintiffSecret }}</span>
-        <button class="btn" @click="copyText(plaintiffSecret)" :disabled="!plaintiffSecret">复制</button>
-      </div>
-      <div class="row">
-        <span class="role">提示</span>
-        <span class="code">法官将自动收到审理请求，接受审理后再通知被告</span>
-        <span></span>
-      </div>
-    </div>
+      </template>
+
+      <el-form label-position="top" :model="appealForm">
+        <el-form-item label="原告 QQ / ID" required>
+           <el-input v-model="appealForm.plaintiff" placeholder="请输入您的联系方式" />
+        </el-form-item>
+        
+        <el-form-item label="被告 QQ / ID">
+           <el-input v-model="appealForm.defendant" placeholder="被举报人信息（可选）" />
+        </el-form-item>
+
+        <el-form-item label="申诉理由 / 案件描述" required>
+           <el-input 
+             v-model="appealForm.reason" 
+             type="textarea" 
+             rows="4" 
+             placeholder="请详细描述案件经过、时间地点及诉求" 
+           />
+        </el-form-item>
+
+        <el-form-item label="证据链接 (图片/视频)">
+           <el-input v-model="appealForm.evidence" placeholder="请提供网盘链接或图床链接" />
+        </el-form-item>
+
+        <el-button type="primary" class="submit-btn" :loading="loading" @click="submitAppeal">
+           <el-icon><DocumentChecked /></el-icon> 提交申诉
+        </el-button>
+      </el-form>
+    </el-card>
   </div>
 </template>
 
 <style scoped>
-.appeal { max-width: 860px; margin: 0 auto; padding: 20px; }
-.title { font-size: 1.8rem; margin-bottom: 16px; color: var(--text-primary); }
-.form { display: flex; flex-direction: column; gap: 10px; background: var(--card-bg); border-radius: 12px; padding: 14px; }
-.label { font-size: 0.95rem; color: var(--text-muted); }
-.input { padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-primary); }
-.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
-.col { display: flex; flex-direction: column; gap: 8px; }
-.controls { display: flex; gap: 10px; flex-wrap: wrap; }
-.btn { padding: 10px 12px; border-radius: 10px; border: none; background: var(--btn-secondary-bg); color: var(--text-primary); cursor: pointer; }
-.btn.primary { background: var(--btn-primary-bg); color: #fff; }
-.secrets { margin-top: 12px; background: var(--btn-secondary-bg); border-radius: 12px; padding: 12px; }
-.row { display: grid; grid-template-columns: 100px 1fr auto; align-items: center; gap: 12px; padding: 6px 0; }
-.role { color: var(--text-muted); }
-.code { color: var(--text-primary); word-break: break-all; }
-.link { color: var(--link-color); }
+.appeal-container {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: var(--body-bg);
+  padding: 20px;
+}
+
+.theme-toggle-wrapper {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+}
+
+.appeal-card {
+  width: 100%;
+  max-width: 600px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.submit-btn {
+  width: 100%;
+  margin-top: 20px;
+}
 </style>

@@ -1,190 +1,116 @@
-<script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
-import { useTheme } from '../composables/useTheme.js'
-import { createApiClient } from '@/services/apiClient.js'
-import { API_DEFAULTS } from '@/core/constants.js'
+<script setup>
+import { ref, onMounted, computed } from 'vue'
+import { useApi } from '@/plugins/api.js'
+import { useTheme } from '@/composables/useTheme.js'
+import { ElMessage } from 'element-plus'
+import { Calendar, Medal, Coin, Trophy, Refresh, Star } from '@element-plus/icons-vue'
 
-const router = useRouter()
 const { themeToggleLabel, themeIcon, cycleThemePreference } = useTheme()
+const api = useApi()
 
-const lastSignDate = ref<Date | null>(null)
-const message = ref('')
-const showMessage = ref(false)
-const animationClass = ref('')
-const isAnimating = ref(false)
-const animationDuration = ref(400)
-const signStatus = ref<null | 'success' | 'error'>(null)
+const lastSignDate = ref(null)
+const signStatus = ref('loading') // loading, success, signed, error
+const signGain = ref(null)
 const qq = ref('')
-const isLoggedIn = ref(!!localStorage.getItem(API_DEFAULTS.tokenStorageKey))
-const useQQFlow = ref(!isLoggedIn.value)
-const profile = ref<any>(null)
-const expPercent = ref(0)
-const signGain = ref<number | null>(null)
-const totalExp = ref<number | null>(null)
-const beforeExp = ref<number | null>(null)
-const autoRedirect = ref(true)
-const qqError = ref('')
+const loading = ref(false)
+
+const isSignedToday = computed(() => {
+  if (!lastSignDate.value) return false
+  const now = new Date()
+  return now.getFullYear() === lastSignDate.value.getFullYear() &&
+         now.getMonth() === lastSignDate.value.getMonth() &&
+         now.getDate() === lastSignDate.value.getDate()
+})
 
 onMounted(() => {
   const storedDate = localStorage.getItem('lastSignDate')
   if (storedDate) lastSignDate.value = new Date(storedDate)
-
-  nextTick(() => {
-    setTimeout(() => {
-      isAnimating.value = true
-      animationClass.value = 'slide-in'
-      setTimeout(() => {
-        isAnimating.value = false
-        animationClass.value = ''
-      }, animationDuration.value)
-    }, 0)
-  })
+  
+  if (isSignedToday.value) {
+    signStatus.value = 'signed'
+  } else {
+    handleSign()
+  }
 })
 
-async function handleSign() {
+const handleSign = async () => {
+  if (isSignedToday.value) {
+    ElMessage.info('今天已经签到过了')
+    return
+  }
+
+  loading.value = true
+  signStatus.value = 'loading'
+  
   try {
-    const now = new Date()
-    if (lastSignDate.value && now.getFullYear() === lastSignDate.value.getFullYear() && now.getMonth() === lastSignDate.value.getMonth() && now.getDate() === lastSignDate.value.getDate()) {
-      showMessageWithDelay('你已签过啦', 'error', false)
+    // 1. Try prefetch profile to get current exp
+    let beforeExp = 0
+    try {
+       const prof = await api.getUserProfile()
+       beforeExp = prof?.data?.currentExp || 0
+    } catch {}
+
+    // 2. Try normal sign
+    try {
+      await api.signUser()
+      // Wait a bit for server to update
+      await new Promise(r => setTimeout(r, 800))
+      
+      // 3. Get profile again to calc gain
+      const profAfter = await api.getUserProfile()
+      const afterExp = profAfter?.data?.currentExp || 0
+      
+      if (afterExp > beforeExp) {
+        signGain.value = afterExp - beforeExp
+      } else {
+        signGain.value = null // Unknown gain
+      }
+      
+      completeSign()
       return
-    }
-    const api = createApiClient()
-    await prefetchProfile()
-    qqError.value = ''
-    if (isLoggedIn.value && !useQQFlow.value) {
-      try {
-        await api.signUser()
-        await new Promise(r => setTimeout(r, 600))
-        await tryLoadProfile()
-        if (signGain.value == null && beforeExp.value != null && profile.value?.currentExp != null) {
-          signGain.value = Math.max(0, profile.value.currentExp - (beforeExp.value as number))
-        }
-        lastSignDate.value = new Date()
-        localStorage.setItem('lastSignDate', (lastSignDate.value as Date).toISOString())
-        showMessageWithDelay('签到成功', 'success')
-        return
-      } catch (e: any) {
-        const reason = e?.reason || e?.message || ''
-        const status = (e && typeof e.status === 'number') ? e.status : 0
-        if (status === 401 || /please\s+login/i.test(String(reason)) || /timeout/i.test(String(reason)) || /Invalid server response/i.test(String(reason))) {
-          useQQFlow.value = true
-          showMessage.value = false
-          signStatus.value = null
-          qqError.value = '无法通过登录签到，转为QQ签到'
-        } else {
-          useQQFlow.value = true
-          showMessage.value = false
-          signStatus.value = null
-          qqError.value = '无法通过登录签到，转为QQ签到'
-          return
-        }
+    } catch (e) {
+      // If unauthorized, fallback to QQ sign
+      const reason = e?.reason || e?.message || ''
+      if (e.status === 401 || /please\s+login/i.test(String(reason))) {
+         signStatus.value = 'qq_needed'
+      } else {
+         throw e
       }
     }
-    if (!qq.value) {
-      const auto = resolveQQ()
-      if (auto) qq.value = auto
-    }
-    if (!qq.value) {
-      qqError.value = '请输入QQ号'
-      showMessage.value = false
-      signStatus.value = null
-      return
-    }
+  } catch (error) {
+    ElMessage.error(error.reason || error.message || '签到失败')
+    signStatus.value = 'error'
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleQQSign = async () => {
+  if (!qq.value) {
+    ElMessage.warning('请输入QQ号')
+    return
+  }
+  loading.value = true
+  try {
     await api.signWithQQ(qq.value)
-    await new Promise(r => setTimeout(r, 600))
-    await tryLoadProfile()
-    if (signGain.value == null && beforeExp.value != null && profile.value?.currentExp != null) {
-      signGain.value = Math.max(0, profile.value.currentExp - (beforeExp.value as number))
-    }
-    lastSignDate.value = new Date()
-    localStorage.setItem('lastSignDate', (lastSignDate.value as Date).toISOString())
-    showMessageWithDelay('签到成功', 'success')
-  } catch (err: any) {
-    const reason = err?.reason || err?.message || '签到失败'
-    if (/not found/i.test(String(reason)) || /please\s+login/i.test(String(reason))) {
-      useQQFlow.value = true
-      signStatus.value = null
-      showMessage.value = false
-      qqError.value = '无法通过登录签到，转为QQ签到'
-    } else {
-      useQQFlow.value = true
-      showMessage.value = false
-      signStatus.value = null
-      qqError.value = '无法通过登录签到，转为QQ签到'
-    }
+    ElMessage.success('QQ签到成功')
+    completeSign()
+  } catch (error) {
+    ElMessage.error(error.reason || error.message || 'QQ签到失败')
+  } finally {
+    loading.value = false
   }
 }
 
-function showMessageWithDelay(msg: string, status: 'success' | 'error', redirect = true) {
-  message.value = msg
-  signStatus.value = status
-  showMessage.value = true
-
-  autoRedirect.value = !!redirect
-  if (autoRedirect.value) {
-    setTimeout(() => {
-      signStatus.value = null
-      showMessage.value = false
-      isAnimating.value = true
-      animationClass.value = 'slide-out'
-      setTimeout(() => {
-        router.push('/')
-      }, animationDuration.value)
-    }, 3000)
-  }
+const completeSign = () => {
+  lastSignDate.value = new Date()
+  localStorage.setItem('lastSignDate', lastSignDate.value.toISOString())
+  signStatus.value = 'success'
 }
-
-async function tryLoadProfile() {
-  try {
-    const api = createApiClient()
-    if (useQQFlow.value && qq.value?.trim()) {
-      const res = await api.getProfileByQQ(qq.value.trim())
-      profile.value = res?.data || null
-    } else {
-      const res = await api.getUserProfile()
-      profile.value = res?.data || null
-    }
-    if (!qq.value && profile.value && /^\d{5,}$/.test(String(profile.value.qq || ''))) {
-      qq.value = String(profile.value.qq)
-    }
-    if (profile.value && profile.value.nextLevelExp) {
-      expPercent.value = Math.min(100, Math.round((profile.value.currentExp * 100) / (profile.value.nextLevelExp || 1)))
-    }
-  } catch {}
-}
-
-async function prefetchProfile() {
-  try {
-    const api = createApiClient()
-    let data = null
-    if (useQQFlow.value && qq.value?.trim()) {
-      const res = await api.getProfileByQQ(qq.value.trim())
-      data = res?.data
-    } else {
-      const res = await api.getUserProfile()
-      data = res?.data
-    }
-    beforeExp.value = (data && typeof data.currentExp === 'number') ? data.currentExp : null
-    if (!qq.value && data && /^\d{5,}$/.test(String(data.qq || ''))) {
-      qq.value = String(data.qq)
-    }
-  } catch {}
-}
-
-function resolveQQ(): string {
-  if (useQQFlow.value && qq.value) return qq.value.trim()
-  const name = localStorage.getItem(API_DEFAULTS.displayNameStorageKey) || ''
-  if (/^\d{5,}$/.test(name)) return name
-  return ''
-}
-
-// 移除从文本解析签到经验，统一以经验差计算
 </script>
 
 <template>
-  <div class="register-container no-border" :class="animationClass">
-    <!-- 主题切换按钮 -->
+  <div class="sign-container">
     <button
       class="theme-toggle fixed"
       @click="cycleThemePreference"
@@ -192,174 +118,124 @@ function resolveQQ(): string {
     >
       {{ themeIcon }}
     </button>
-    <div class="form-container">
-      <router-link class="text-link btn-home" to="/"><span class="btn-icon">←</span> 返回首页</router-link>
-      <div :class="['form-step', animationClass]">
-        <h2>每日签到</h2>
-      <div class="input-group" v-if="!showMessage && (useQQFlow || !isLoggedIn)">
-        <label for="qq">QQ号</label>
-        <input id="qq" v-model="qq" type="text" placeholder="请输入QQ号" />
-        <div class="input-error" v-if="qqError">{{ qqError }}</div>
-      </div>
-      <div class="completion-message" v-if="showMessage">
-        <p>{{ message }}</p>
-        <div v-if="signStatus==='success'" class="summary">
-          <div class="sum-line"><span class="sum-label">等级</span><span class="sum-value">{{ profile?.level || '-' }}</span></div>
-          <div class="sum-line"><span class="sum-label">当前经验</span><span class="sum-value">{{ (totalExp ?? profile?.currentExp) ?? '-' }}</span></div>
-          <div class="sum-line"><span class="sum-label">签到经验</span><span class="sum-value">{{ signGain ?? '-' }}</span></div>
+
+    <el-card class="sign-card">
+      <template #header>
+        <div class="card-header">
+           <router-link to="/" class="back-link">← 返回首页</router-link>
+           <h2>每日签到</h2>
         </div>
-        <p v-if="autoRedirect">即将返回首页...</p>
-      </div>
-      <div v-else>
-          <p style="text-align: center; margin-bottom: 30px;">
-            点击下方按钮完成今日签到
-          </p>
-          <div class="button-group">
-            <button 
-              class="btn btn-submit sign-button"
-              :class="{ 
-              'sign-success': signStatus === 'success',
-              'sign-error': signStatus === 'error',
-              'sign-in-progress': showMessage
-              }"
-              @click="handleSign"
-            >
-              <span v-if="showMessage">{{ message }}</span>
-              <span v-else>签到</span>
-            </button>
-          </div>
+      </template>
+
+      <div class="sign-content">
+        <!-- 签到成功 -->
+        <div v-if="signStatus === 'success' || signStatus === 'signed'" class="status-box success">
+           <el-icon class="status-icon" color="#67C23A"><Trophy /></el-icon>
+           <h3>{{ signStatus === 'signed' ? '今日已签到' : '签到成功！' }}</h3>
+           <p v-if="signGain" class="gain-text">+{{ signGain }} 经验值</p>
+           <p v-else class="gain-text">获得随机奖励</p>
+           <p class="date-text">{{ new Date().toLocaleDateString() }}</p>
         </div>
+
+        <!-- 需要QQ补签 -->
+        <div v-else-if="signStatus === 'qq_needed'" class="status-box">
+           <el-icon class="status-icon" color="#E6A23C"><Lock /></el-icon>
+           <h3>未登录账号</h3>
+           <p>您可以登录后签到，或者输入QQ号进行签到</p>
+           
+           <div class="qq-input-area">
+             <el-input v-model="qq" placeholder="请输入QQ号" :prefix-icon="User" />
+             <el-button type="primary" :loading="loading" @click="handleQQSign" style="margin-top: 10px; width: 100%">QQ签到</el-button>
+             <el-divider>或者</el-divider>
+             <router-link to="/login?redirect=/sign">
+               <el-button style="width: 100%">去登录</el-button>
+             </router-link>
+           </div>
+        </div>
+
+        <!-- 加载中 -->
+        <div v-else-if="signStatus === 'loading'" class="status-box">
+           <el-icon class="status-icon is-loading" color="#409EFF"><Refresh /></el-icon>
+           <h3>正在签到...</h3>
+        </div>
+
+        <!-- 失败 -->
+        <div v-else class="status-box error">
+           <el-icon class="status-icon" color="#F56C6C"><CircleClose /></el-icon>
+           <h3>签到失败</h3>
+           <el-button type="primary" @click="handleSign">重试</el-button>
+        </div>
+
       </div>
-    </div>
+    </el-card>
   </div>
 </template>
 
 <style scoped>
-/* 使用register.css中的样式 */
-@import '/src/assets/register.css';
-
-.register-container.no-border {
-  box-shadow: none;
-  border: none;
-  border-radius: 0;
-  max-width: 400px;
-  margin: 100px auto;
+.sign-container {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: var(--body-bg);
+  padding: 20px;
 }
 
-.completion-message {
-  background-color: #f0f9ff;
-  border-radius: 5px;
-  padding: 30px;
+.theme-toggle-wrapper {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+}
+
+.sign-card {
+  width: 100%;
+  max-width: 450px;
   text-align: center;
 }
 
-.completion-message p:first-child {
-  font-size: 20px;
-  font-weight: bold;
-  color: var(--success-color);
-  margin-bottom: 15px;
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
-.completion-message p {
-  font-size: 16px;
-  color: var(--text-muted);
+.card-header h2 {
+  margin: 0;
+  font-size: 18px;
 }
 
-/* 添加滑出动画 */
-.form-step.slide-out {
-  animation: slideOutRight 0.4s ease-in forwards;
+.back-link {
+  color: var(--el-color-primary);
+  text-decoration: none;
+  font-size: 14px;
 }
 
-@keyframes slideOutRight {
-  0% {
-    transform: translateX(0);
-    opacity: 1;
-  }
-  100% {
-    transform: translateX(100px);
-    opacity: 0;
-  }
-}
-
-/* 添加进入和离开动画样式 */
-@keyframes slideIn {
-  from {
-    transform: translateX(-100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-@keyframes slideOut {
-  from {
-    transform: translateX(0);
-    opacity: 1;
-  }
-  to {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-}
-
-.slide-in {
-  animation: slideIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-}
-
-.slide-out {
-  animation: slideOut 0.4s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards;
-}
-
-/* 签到按钮动画样式 */
-.sign-button {
-  width: 100%;
-  transition: all 0.3s ease;
-}
-
-.input-group {
+.status-box {
+  padding: 30px 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 16px;
+  align-items: center;
+  gap: 15px;
 }
 
-.input-group input {
-  padding: 10px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background: var(--card-bg);
-  color: var(--text-primary);
+.status-icon {
+  font-size: 60px;
 }
 
-.input-error {
-  margin-top: 4px;
-  color: var(--error-color);
-  font-size: 0.85rem;
-}
-
-.sign-button.sign-in-progress {
-  transform: scale(1.1);
-  width: 100%;
-  height: 60px;
-  font-size: 18px;
+.gain-text {
+  font-size: 24px;
+  color: #E6A23C;
   font-weight: bold;
+  margin: 10px 0;
 }
 
-.sign-button.sign-success {
-  border-color: var(--success-color);
-  color: var(--success-color);
+.date-text {
+  color: var(--el-text-color-secondary);
 }
 
-.sign-button.sign-error {
-  border-color: var(--error-color);
-  color: var(--error-color);
+.qq-input-area {
+  width: 100%;
+  max-width: 300px;
+  margin-top: 20px;
 }
-
-.summary { margin-top: 12px; padding: 12px; background: var(--card-bg); border-radius: 12px; box-shadow: var(--shadow-md); text-align: left; }
-.sum-line { display: flex; justify-content: space-between; padding: 8px 10px; background: var(--btn-secondary-bg); border-radius: 10px; margin-bottom: 8px; }
-.sum-label { color: var(--text-muted); }
-.sum-value { color: var(--text-primary); font-weight: 600; }
 </style>
-

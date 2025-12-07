@@ -1,55 +1,41 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { API_DEFAULTS } from '@/core/constants.js'
 import { useRouter } from 'vue-router'
-import { useTheme } from '@/composables/useTheme.js'
 import { useApi } from '@/plugins/api.js'
-import { useSnackbar } from '@/composables/useSnackbar.js'
+import { useTheme } from '@/composables/useTheme.js'
+import { ElMessage } from 'element-plus'
+import { User, Message, Iphone, Trophy, Coin, Timer, Calendar } from '@element-plus/icons-vue'
+import { API_DEFAULTS } from '@/core/constants.js'
 
 const router = useRouter()
-const { themeToggleLabel, themeIcon, cycleThemePreference } = useTheme()
 const api = useApi()
-const { showMessage } = useSnackbar()
+const { themeToggleLabel, themeIcon, cycleThemePreference } = useTheme()
 
 const loading = ref(true)
-const error = ref('')
-const profile = ref({ username: '', email: '', qq: '', gid: '', level: '', currentExp: 0, nextLevelExp: 0, coin: 0, onlineMinutes: 0, registerTime: '' })
-const isLoggedIn = ref(false)
-const fallbackQQ = ref('')
+const profile = ref({})
 const usingQQFallback = ref(false)
+
 const expPercent = computed(() => {
   const cur = Number(profile.value.currentExp || 0)
   const next = Number(profile.value.nextLevelExp || 0)
   if (!next) return 0
   return Math.min(100, Math.round((cur * 100) / next))
 })
+
 const remainingExp = computed(() => {
   const cur = Number(profile.value.currentExp || 0)
   const next = Number(profile.value.nextLevelExp || 0)
-  const rem = next - cur
-  return Math.max(0, isNaN(rem) ? 0 : rem)
+  return Math.max(0, next - cur)
 })
 
 onMounted(async () => {
   loading.value = true
-  error.value = ''
   try {
     const t = api.readToken()
-    const atStr = localStorage.getItem(API_DEFAULTS.loginTimestampStorageKey)
-    let at = atStr ? parseInt(atStr) : 0
-    if (t && !at) {
-        at = Date.now()
-        localStorage.setItem(API_DEFAULTS.loginTimestampStorageKey, at.toString())
-    }
-    const expired = !at || Date.now() - at > API_DEFAULTS.loginMaxAgeMs
-    isLoggedIn.value = !!t && !expired
+    if (!t) throw new Error('未登录')
+
     const res = await api.getUserProfile()
     const data = res?.data || {}
-    
-    const newName = data.username || data.nickname || data.qq || data.email
-     if (newName) {
-         localStorage.setItem(API_DEFAULTS.displayNameStorageKey, newName)
-     }
     
     profile.value = {
       username: data.username || '',
@@ -57,88 +43,205 @@ onMounted(async () => {
       qq: data.qq || '',
       gid: data.gid || '',
       level: data.level || '',
-      currentExp: typeof data.currentExp === 'number' ? data.currentExp : 0,
-      nextLevelExp: typeof data.nextLevelExp === 'number' ? data.nextLevelExp : 0,
-      coin: typeof data.coin === 'number' ? data.coin : 0,
-      onlineMinutes: typeof data.onlineMinutes === 'number' ? data.onlineMinutes : 0,
+      currentExp: Number(data.currentExp) || 0,
+      nextLevelExp: Number(data.nextLevelExp) || 0,
+      coin: Number(data.coin) || 0,
+      onlineMinutes: Number(data.onlineMinutes) || 0,
       registerTime: data.registerTime || '',
     }
   } catch (e) {
     const reason = e?.reason || e?.message || ''
+    const status = e?.status || 0
+
+    if (status === 401 || status === 403) {
+      ElMessage.error('请先登录')
+      router.push('/login?redirect=/profile')
+      return
+    }
+
     const name = localStorage.getItem(API_DEFAULTS.displayNameStorageKey) || ''
-    fallbackQQ.value = /^\d{5,}$/.test(name) ? name : ''
-    if (fallbackQQ.value) {
+    const fallbackQQ = /^\d{5,}$/.test(name) ? name : ''
+
+    if (fallbackQQ) {
       try {
-        const res2 = await api.getProfileByQQ(fallbackQQ.value)
+        const res2 = await api.getProfileByQQ(fallbackQQ)
         const data2 = res2?.data || {}
         profile.value = {
           username: data2.username || '',
           email: '',
-          qq: data2.qq || fallbackQQ.value,
+          qq: data2.qq || fallbackQQ,
           gid: data2.gid || '',
           level: data2.level || '',
-          currentExp: typeof data2.currentExp === 'number' ? data2.currentExp : 0,
-          nextLevelExp: typeof data2.nextLevelExp === 'number' ? data2.nextLevelExp : 0,
-          coin: typeof data2.coin === 'number' ? data2.coin : 0,
-          onlineMinutes: typeof data2.onlineMinutes === 'number' ? data2.onlineMinutes : 0,
+          currentExp: Number(data2.currentExp) || 0,
+          nextLevelExp: Number(data2.nextLevelExp) || 0,
+          coin: Number(data2.coin) || 0,
+          onlineMinutes: Number(data2.onlineMinutes) || 0,
           registerTime: data2.registerTime || '',
         }
         usingQQFallback.value = true
-        error.value = ''
-        showMessage('未登录，已显示QQ资料', { type: 'info' })
+        ElMessage.info('未登录或获取资料失败，已显示QQ资料')
       } catch (e2) {
-        error.value = reason || e2?.reason || e2?.message || '获取资料失败'
-        showMessage(error.value, { type: 'error' })
+        const errReason = reason || e2?.reason || e2?.message || '获取资料失败'
+        ElMessage.error(errReason)
       }
     } else {
-      error.value = reason || '获取资料失败'
-      showMessage(error.value, { type: 'error' })
+      if (e.message === '未登录') {
+        ElMessage.error('请先登录')
+        router.push('/login?redirect=/profile')
+      } else {
+        ElMessage.error(reason || '获取资料失败')
+      }
     }
   } finally {
     loading.value = false
   }
 })
+
+const goHome = () => router.push('/')
+const goLogin = () => router.push('/login?redirect=/profile')
 </script>
 
 <template>
-  <div class="register-container no-border">
-    <button class="theme-toggle fixed" @click="cycleThemePreference" :title="themeToggleLabel">{{ themeIcon }}</button>
-    <div class="form-container">
-      <router-link class="text-link btn-home" to="/"><span class="btn-icon">←</span> 返回首页</router-link>
-      <div class="form-step">
-        <h2>个人主页</h2>
-        <div v-if="loading" class="completion-message"><p>正在加载...</p></div>
-        <div v-else>
-          <div v-if="usingQQFallback" class="completion-message"><p>当前显示为QQ资料，登录后可查看完整账户信息</p></div>
-          <div class="summary">
-            <div class="sum-line"><span class="sum-label">账号</span><span class="sum-value">{{ profile.username || '-' }}</span></div>
-            <div class="sum-line"><span class="sum-label">绑定邮箱</span><span class="sum-value">{{ profile.email || '-' }}</span></div>
-            <div class="sum-line"><span class="sum-label">QQ号</span><span class="sum-value">{{ profile.qq || '-' }}</span></div>
-            <div class="sum-line"><span class="sum-label">GID</span><span class="sum-value">{{ profile.gid || '-' }}</span></div>
-            <div class="sum-line"><span class="sum-label">账号等级</span><span class="sum-value">{{ profile.level || '-' }}</span></div>
-            <div class="sum-line"><span class="sum-label">当前经验</span><span class="sum-value">{{ profile.currentExp }}</span></div>
-            <div class="sum-line"><span class="sum-label">下一级所需经验</span><span class="sum-value">{{ profile.nextLevelExp }}</span></div>
-            <div class="sum-line"><span class="sum-label">经验进度</span><span class="sum-value">{{ expPercent }}%</span></div>
-            <div class="sum-line"><span class="sum-label">下一等级剩余经验</span><span class="sum-value">{{ remainingExp }}</span></div>
-            <div class="sum-line"><span class="sum-label">柠檬币</span><span class="sum-value">{{ profile.coin }}</span></div>
-            <div class="sum-line"><span class="sum-label">在线时长(分钟)</span><span class="sum-value">{{ profile.onlineMinutes }}</span></div>
-            <div class="sum-line"><span class="sum-label">注册时间</span><span class="sum-value">{{ profile.registerTime || '-' }}</span></div>
-          </div>
-          <div v-if="error" class="button-group" style="margin-top: 10px;">
-            <router-link class="btn btn-submit" to="/login?redirect=/profile">去登录</router-link>
-          </div>
+  <div class="profile-container">
+    <button
+      class="theme-toggle fixed"
+      @click="cycleThemePreference"
+      :title="themeToggleLabel"
+    >
+      {{ themeIcon }}
+    </button>
+
+    <el-card class="profile-card" v-loading="loading">
+      <template #header>
+        <div class="card-header">
+          <el-button text @click="goHome">← 返回首页</el-button>
+          <h2>个人主页</h2>
+          <div></div>
         </div>
+      </template>
+
+      <div v-if="usingQQFallback" class="fallback-alert">
+        <el-alert title="当前显示为QQ资料，登录后可查看完整账户信息" type="info" show-icon :closable="false" />
       </div>
-    </div>
+
+      <div class="profile-content" v-if="profile.username || profile.qq">
+        <el-descriptions border :column="1">
+          <el-descriptions-item>
+            <template #label><div class="cell-item"><el-icon><User /></el-icon> 账号</div></template>
+            {{ profile.username || '-' }}
+          </el-descriptions-item>
+          <el-descriptions-item>
+            <template #label><div class="cell-item"><el-icon><Message /></el-icon> 绑定邮箱</div></template>
+            {{ profile.email || '-' }}
+          </el-descriptions-item>
+          <el-descriptions-item>
+            <template #label><div class="cell-item"><el-icon><Iphone /></el-icon> QQ号</div></template>
+            {{ profile.qq || '-' }}
+          </el-descriptions-item>
+           <el-descriptions-item label="GID">{{ profile.gid || '-' }}</el-descriptions-item>
+        </el-descriptions>
+        
+        <el-divider content-position="left">游戏数据</el-divider>
+
+        <el-descriptions border :column="2">
+           <el-descriptions-item label="等级">{{ profile.level || '-' }}</el-descriptions-item>
+           <el-descriptions-item label="柠檬币">
+              <span class="coin-text">{{ profile.coin }}</span>
+           </el-descriptions-item>
+           <el-descriptions-item label="在线时长">{{ profile.onlineMinutes }} 分钟</el-descriptions-item>
+           <el-descriptions-item label="注册时间">{{ profile.registerTime || '-' }}</el-descriptions-item>
+        </el-descriptions>
+
+        <div class="exp-section">
+           <div class="exp-info">
+              <span>当前经验: {{ profile.currentExp }}</span>
+              <span>下一级所需: {{ profile.nextLevelExp }}</span>
+           </div>
+           <el-progress :percentage="expPercent" :format="(p) => `${p}%`" striped striped-flow />
+           <div class="exp-remain">距离升级还需 {{ remainingExp }} 经验</div>
+        </div>
+
+      </div>
+      
+      <div v-else-if="!loading" class="empty-state">
+        <el-empty description="无法获取资料" />
+        <el-button type="primary" @click="goLogin">去登录</el-button>
+      </div>
+
+    </el-card>
   </div>
 </template>
 
 <style scoped>
-@import '/src/assets/register.css';
-.register-container.no-border { box-shadow: none; border: none; border-radius: 0; max-width: 520px; margin: 100px auto; }
-.completion-message { background-color: #f0f9ff; border-radius: 5px; padding: 16px; text-align: center; margin-bottom: 12px; }
-.summary { margin-top: 12px; padding: 12px; background: var(--card-bg); border-radius: 12px; box-shadow: var(--shadow-md); }
-.sum-line { display: flex; justify-content: space-between; padding: 8px 10px; background: var(--btn-secondary-bg); border-radius: 10px; margin-bottom: 8px; }
-.sum-label { color: var(--text-muted); }
-.sum-value { color: var(--text-primary); font-weight: 600; }
+.profile-container {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: var(--body-bg);
+  padding: 20px;
+}
+
+.theme-toggle-wrapper {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+}
+
+.profile-card {
+  width: 100%;
+  max-width: 600px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-header h2 {
+  margin: 0;
+}
+
+.cell-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.fallback-alert {
+  margin-bottom: 20px;
+}
+
+.coin-text {
+  color: #E6A23C;
+  font-weight: bold;
+}
+
+.exp-section {
+  margin-top: 20px;
+  padding: 15px;
+  background: var(--el-fill-color-light);
+  border-radius: 8px;
+}
+
+.exp-info {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+  font-size: 14px;
+  color: var(--el-text-color-secondary);
+}
+
+.exp-remain {
+  margin-top: 5px;
+  text-align: right;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 20px;
+}
 </style>

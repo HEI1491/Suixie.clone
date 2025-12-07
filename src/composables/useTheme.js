@@ -40,9 +40,16 @@ const applyTheme = (theme) => {
   if (theme === 'dark') {
     document.documentElement.classList.add('dark-mode')
     document.documentElement.setAttribute('data-theme', 'dark')
+    // 强制给 body 和 #app 添加 dark-mode 类，以确保样式穿透
+    document.body.classList.add('dark-mode')
+    const app = document.getElementById('app')
+    if (app) app.classList.add('dark-mode')
   } else if (theme === 'light') {
     document.documentElement.classList.add('light-mode')
     document.documentElement.setAttribute('data-theme', 'light')
+    document.body.classList.remove('dark-mode')
+    const app = document.getElementById('app')
+    if (app) app.classList.remove('dark-mode')
   }
 }
 

@@ -107,13 +107,50 @@ export function createContentService({ http }) {
     },
 
     async getUserProfile() {
-      const payload = await http.request('/user/profileInfo', {
-        method: 'GET',
-      });
-      if (!payload?.data) {
-        throw new ApiError('Invalid profile response', { status: 500, payload });
+      try {
+        // 尝试通过 /user/bindStatus 获取绑定的QQ
+        const bindPayload = await http.request('/user/bindStatus', {
+          method: 'GET',
+          searchParams: { type: 'qq' }
+        });
+
+        const qq = bindPayload?.qq;
+        if (qq) {
+          // 如果有绑定QQ，通过QQ获取详细资料
+          return this.getProfileByQQ(qq);
+        }
+
+        // 如果未绑定QQ，返回基本信息
+        return {
+          status: 200,
+          data: {
+            username: '未绑定QQ',
+            qq: '',
+            gid: '',
+            level: '0',
+            currentExp: 0,
+            nextLevelExp: 0,
+            coin: 0,
+            onlineMinutes: 0,
+            registerTime: ''
+          }
+        };
+      } catch (e) {
+        // 如果 /user/bindStatus 失败（例如404或未登录），尝试原有的 /user/profileInfo 作为备选（虽然已知404，但保留逻辑以防后端修复）
+        // 或者直接抛出错误
+        console.warn('Failed to get bind status, trying fallback...', e);
+        try {
+            const payload = await http.request('/user/profileInfo', {
+                method: 'GET',
+            });
+            if (!payload?.data) {
+                throw new ApiError('Invalid profile response', { status: 500, payload });
+            }
+            return { status: 200, data: payload.data };
+        } catch (e2) {
+             throw e; // 抛出原始错误或新错误
+        }
       }
-      return { status: 200, data: payload.data };
     },
   };
 }

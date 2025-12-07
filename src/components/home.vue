@@ -128,8 +128,31 @@ const logout = () => {
   ElMessage.success('已退出登录')
 }
 
-// 切换主题模式
+// 切换主题模式 - 添加扩散动效
 const toggleDarkMode = (event: MouseEvent) => {
+  // 确保 event 和 currentTarget 存在
+  if (event && event.currentTarget) {
+    const target = event.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+    
+    // 获取点击坐标，如果不可用（如键盘触发），则默认从中心开始
+    const x = event.clientX ? (event.clientX - rect.left) : (rect.width / 2);
+    const y = event.clientY ? (event.clientY - rect.top) : (rect.height / 2);
+    
+    // 创建扩散动画元素
+    const ripple = document.createElement('div');
+    ripple.classList.add('theme-ripple');
+    ripple.style.left = `${x}px`;
+    ripple.style.top = `${y}px`;
+    target.appendChild(ripple);
+    
+    // 清理动画元素
+    ripple.addEventListener('animationend', () => {
+      ripple.remove();
+    });
+  }
+  
+  // 切换主题
   cycleThemePreference();
 }
 

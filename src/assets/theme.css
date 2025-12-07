@@ -182,6 +182,12 @@ body {
   font-family: 'Fredoka', 'Baloo 2', 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
 
+/* 确保深色模式下 body 背景色生效 */
+body.dark-mode {
+  background-color: #1e293b;
+  color: #f8fafc;
+}
+
 /* 主题切换按钮基础样式 */
 .theme-toggle {
   background: transparent;

@@ -138,11 +138,13 @@ const goLogin = () => router.push('/login');
 
 <template>
   <div class="register-container">
-    <div class="theme-toggle-wrapper">
-       <el-button circle @click="cycleThemePreference" :title="themeToggleLabel">
-          {{ themeIcon }}
-       </el-button>
-    </div>
+    <button
+      class="theme-toggle fixed"
+      @click="cycleThemePreference"
+      :title="themeToggleLabel"
+    >
+      {{ themeIcon }}
+    </button>
 
     <el-card class="register-card">
       <template #header>
@@ -241,7 +243,7 @@ const goLogin = () => router.push('/login');
   display: flex;
   justify-content: center;
   align-items: center;
-  background: var(--bg-color, #f0f2f5);
+  background: var(--body-bg);
   position: relative;
   padding: 20px;
 }
