@@ -1,6 +1,5 @@
 <script setup>
 import { ref, provide, onMounted, onUnmounted } from 'vue';
-import BeianFooter from './components/BeianFooter.vue';
 
 // 音乐播放器相关逻辑
 const musicEl = ref(null)
@@ -108,9 +107,6 @@ provide('music', {
   
   <!-- 全局音乐播放器 -->
   <audio ref="musicEl" style="display:none"></audio>
-
-  <!-- 全局备案信息（文档流内，非fixed） -->
-  <BeianFooter />
 </template>
 
 <style scoped>

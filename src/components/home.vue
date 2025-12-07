@@ -3,6 +3,7 @@ import { onMounted, ref, onUnmounted, computed, inject } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTheme } from '@/composables/useTheme.js'
 import { API_DEFAULTS } from '@/core/constants.js'
+import BeianFooter from '@/components/BeianFooter.vue'
 import '../assets/register.css'
 
 const router = useRouter()
@@ -95,24 +96,45 @@ const parseJwtSub = (token: string) => {
     return null
   }
 }
-const syncAuth = () => {
-  const t = localStorage.getItem(tokenKey) || ''
+const syncAuth = async () => {
+  const t = apiClient.readToken() || ''
   const atStr = localStorage.getItem(tsKey)
-  const at = atStr ? parseInt(atStr) : 0
+  let at = atStr ? parseInt(atStr) : 0
+  
+  // 如果有 token 但没有时间戳（可能是 cookie 恢复或注入的），重置时间戳
+  if (t && !at) {
+    at = Date.now()
+    localStorage.setItem(tsKey, at.toString())
+  }
+
   const expired = !at || Date.now() - at > maxAge
-  if (expired) {
-    localStorage.removeItem(tokenKey)
+  if (!t || expired) {
+    apiClient.clearToken()
     localStorage.removeItem(nameKey)
     localStorage.removeItem(tsKey)
     userId.value = null
     userName.value = null
     return
   }
-  userId.value = t ? parseJwtSub(t) : null
-  userName.value = localStorage.getItem(nameKey)
+  userId.value = parseJwtSub(t)
+  
+  // 尝试获取用户名
+  let name = localStorage.getItem(nameKey)
+  if (!name && userId.value) {
+    try {
+      const res = await apiClient.getUserProfile()
+      if (res.data && res.data.username) {
+        name = res.data.username
+        localStorage.setItem(nameKey, name)
+      }
+    } catch (e) {
+      console.error('Failed to fetch user profile', e)
+    }
+  }
+  userName.value = name
 }
 const logout = () => {
-  localStorage.removeItem(tokenKey)
+  apiClient.clearToken()
   localStorage.removeItem(nameKey)
   localStorage.removeItem(tsKey)
   syncAuth()
@@ -679,6 +701,9 @@ onUnmounted(() => {
         <span>💬</span>
       </div>
     </div>
+    
+    <!-- 备案信息页脚 -->
+    <BeianFooter />
   </div>
 </template>
 
