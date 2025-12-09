@@ -2,13 +2,16 @@ import { ApiError } from '@/core/errors.js';
 import { EMAIL_REGEX, PASSWORD_REGEX, CODE_REGEX } from '@/core/constants.js';
 
 export const validators = {
-  email(value) {
+  email(value, silent = false) {
     if (!value) {
+      if (silent) return false;
       throw new ApiError('Missing email', { status: 400 });
     }
     if (!EMAIL_REGEX.test(value)) {
+      if (silent) return false;
       throw new ApiError('Invalid email format', { status: 400 });
     }
+    return true;
   },
   password(value) {
     if (!value) {

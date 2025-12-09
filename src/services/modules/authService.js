@@ -25,15 +25,34 @@ export function createAuthService({ http, tokenStore, mailAuthCode }) {
     },
 
     async login(account, password) {
-      validators.username(account);
+      if (!account) {
+        throw new ApiError('Missing account', { status: 400 });
+      }
       if (!password) {
         throw new ApiError('Missing password', { status: 400 });
+      }
+
+      // 自动推断登录类型
+      let type = 'username';
+      if (validators.email(account, true)) { // true = silent check
+        type = 'email';
+      } else if (/^\d+$/.test(account) && account.length >= 5 && account.length <= 11) {
+        // 假设5-11位纯数字可能是QQ号，或者是GID？
+        // 既然不确定，这里优先尝试 username，或者可以尝试 QQ
+        // 根据 javalin/login.kts，支持 username, email, gid, qq
+        // 纯数字也可能是用户名，所以保持默认 username 比较安全，除非用户明确是 QQ 登录（通常有单独按钮）
+        // 如果是邮箱，肯定包含 @
+      }
+
+      // 如果 account 包含 @，则强制设为 email
+      if (account.includes('@')) {
+        type = 'email';
       }
 
       const payload = await http.request('/login', {
         method: 'POST',
         body: {
-          type: 'username',
+          type,
           identifier: account,
           password,
         },

@@ -93,7 +93,22 @@ export function createContentService({ http }) {
       // If httpClient adds /api prefix, it becomes /api/status.
       // If the backend is mounted at root, it might be just /status.
       // Let's try without leading slash to let httpClient handle it, or check if it should be 'status'
-      const payload = await http.request('http://ng.rainplay.cn:59046/status', { method: 'GET' });
+      const targetUrl = 'http://ng.rainplay.cn:59046/status';
+      const isHttps = typeof window !== 'undefined' && window.location.protocol === 'https:';
+      
+      let payload;
+      if (isHttps) {
+          const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
+          const proxyPayload = await http.request(proxyUrl, { method: 'GET' });
+          try {
+             payload = typeof proxyPayload.contents === 'string' ? JSON.parse(proxyPayload.contents) : proxyPayload.contents;
+          } catch {
+             payload = proxyPayload.contents || {};
+          }
+      } else {
+          payload = await http.request(targetUrl, { method: 'GET' });
+      }
+      
       return { status: 200, info: String(payload?.info || '') };
     },
 

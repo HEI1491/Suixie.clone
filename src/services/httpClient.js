@@ -130,7 +130,7 @@ export function createHttpClient({ baseUrl, apiKey, timeoutMs = 8000 }) {
         let t = localStorage.getItem(API_DEFAULTS.tokenStorageKey) || '';
         // 如果 localStorage 没有，尝试从 Cookie 读取
         if (!t) {
-          const match = document.cookie.match(new RegExp('(^| )jwt=([^;]+)'));
+          const match = document.cookie.match(new RegExp('(^| )(?:jwt|Jwt|JWT)=([^;]+)'));
           if (match) t = match[2];
         }
         // 优先使用 Authorization 标准头，同时保留 jwt 头以兼容
@@ -175,10 +175,10 @@ export function createHttpClient({ baseUrl, apiKey, timeoutMs = 8000 }) {
         } catch {}
       } else if (/^https?:\/\//i.test(normalizedBaseUrl)) {
         const endsWithApi = /\/api\/?$/.test(normalizedBaseUrl);
-        // 如果未携带 /api 前缀，优先尝试 /api，随后尝试原始基础地址
+        // 如果未携带 /api 前缀，优先尝试原始基础地址，随后尝试 /api
         if (!endsWithApi) {
-          try { add(new URL('api/', normalizedBaseUrl).toString()); } catch {}
           add(normalizedBaseUrl);
+          try { add(new URL('api/', normalizedBaseUrl).toString()); } catch {}
         } else {
           // 如果基础地址自带 /api，仍然追加一个“去掉 /api”的兜底，避免后端未挂载前缀时 404
           add(normalizedBaseUrl);
@@ -206,6 +206,19 @@ export function createHttpClient({ baseUrl, apiKey, timeoutMs = 8000 }) {
             signal: controller.signal,
           });
           clearTimeout(timer);
+
+          // 检查 Content-Type，如果期望 JSON 但收到 HTML（常见于 SPA 404 回退），则视为未找到接口，尝试下一个 BaseURL
+          const contentType = response.headers.get('content-type');
+          if (response.ok && contentType && contentType.includes('text/html')) {
+            continue;
+          }
+
+          // 如果遇到 502, 503, 504 错误，也尝试下一个 BaseURL
+          // 这有助于在 /api/login 返回 504 时自动回退到 /login (如果存在)
+          if (response.status === 502 || response.status === 503 || response.status === 504) {
+            continue;
+          }
+
           const payload = await parseJson(response);
           const successStatuses = new Set(['success', 'successed', 'ok', 'OK', 'SUCCESS', 'Success']);
           if (!response.ok) {
