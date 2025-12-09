@@ -94,8 +94,8 @@ export const parseServerInfo = (infoString) => {
 }
 
 export const fetchServerStatus = async (server, statusUrls) => {
-  // 优先尝试通过 mindustry.icu 直接获取状态
-  const directUrl = 'https://mindustry.icu/status';
+  // 优先尝试通过 ng.rainplay.cn 直接获取状态
+  const directUrl = 'http://ng.rainplay.cn:59046/status';
   
   try {
     const response = await fetch(directUrl);

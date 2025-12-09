@@ -20,7 +20,7 @@ const hitokotoCollapsed = ref(false)
 
 // 服务器状态相关
 const statusUrls = [
-  (typeof window !== 'undefined' ? window.location.origin : '') + '/status',
+  'http://ng.rainplay.cn:59046/status'
 ]
 const servers = ref([
   { id: 1, name: '幽柠之域', url: statusUrls[0], status: null, expanded: false, mapExpanded: false }

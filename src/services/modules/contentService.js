@@ -93,7 +93,7 @@ export function createContentService({ http }) {
       // If httpClient adds /api prefix, it becomes /api/status.
       // If the backend is mounted at root, it might be just /status.
       // Let's try without leading slash to let httpClient handle it, or check if it should be 'status'
-      const payload = await http.request('status', { method: 'GET' });
+      const payload = await http.request('http://ng.rainplay.cn:59046/status', { method: 'GET' });
       return { status: 200, info: String(payload?.info || '') };
     },
 
